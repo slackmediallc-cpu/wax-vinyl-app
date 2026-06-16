@@ -16,71 +16,31 @@
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; background: #111; font-family: system-ui, -apple-system, sans-serif; }
   body { display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 0; }
-
-  /* App shell - mobile frame */
-  #app {
-    width: 100%; max-width: 430px; min-height: 100vh;
-    background: var(--bg); position: relative; overflow: hidden;
-    display: flex; flex-direction: column;
-    transition: background 0.3s;
-  }
-  .bg-skin {
-    position: absolute; inset: 0; z-index: 0;
-    background-size: cover; background-position: center;
-    transition: opacity 0.4s;
-    pointer-events: none;
-  }
+  #app { width: 100%; max-width: 430px; min-height: 100vh; background: var(--bg); position: relative; overflow: hidden; display: flex; flex-direction: column; transition: background 0.3s; }
+  .bg-skin { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; transition: opacity 0.4s; pointer-events: none; }
   .app-content { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; }
-
-  /* Nav */
-  .nav {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 52px 20px 16px; position: sticky; top: 0; z-index: 100;
-    background: var(--bg); border-bottom: var(--border-w) solid var(--border);
-    transition: background 0.3s;
-  }
+  .nav { display: flex; align-items: center; justify-content: space-between; padding: 52px 20px 16px; position: sticky; top: 0; z-index: 100; background: var(--bg); border-bottom: var(--border-w) solid var(--border); transition: background 0.3s; }
   .nav-title { font-size: 22px; font-weight: 700; color: var(--text); font-family: var(--title-font); letter-spacing: -0.5px; }
   .nav-sub { font-size: 11px; color: var(--subtext); margin-top: 1px; }
   .nav-btn { background: none; border: var(--border-w) solid var(--border); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--subtext); font-size: 16px; transition: all 0.15s; }
   .nav-btn:hover { background: var(--card); color: var(--text); }
-
-  /* Search + filter bar */
   .search-bar { padding: 12px 16px; display: flex; gap: 8px; align-items: center; }
   .search-wrap { flex: 1; position: relative; }
-  .search-input {
-    width: 100%; background: var(--card); border: var(--border-w) solid var(--border);
-    border-radius: 22px; padding: 9px 14px 9px 36px; font-size: 14px;
-    color: var(--text); outline: none; font-family: inherit;
-    transition: border-color 0.15s;
-  }
+  .search-input { width: 100%; background: var(--card); border: var(--border-w) solid var(--border); border-radius: 22px; padding: 9px 14px 9px 36px; font-size: 14px; color: var(--text); outline: none; font-family: inherit; transition: border-color 0.15s; }
   .search-input::placeholder { color: var(--subtext); }
   .search-input:focus { border-color: var(--accent); }
   .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--subtext); font-size: 15px; pointer-events: none; }
-  .filter-btn { background: var(--card); border: var(--border-w) solid var(--border); border-radius: 22px; padding: 9px 12px; font-size: 13px; color: var(--subtext); cursor: pointer; white-space: nowrap; transition: all 0.15s; }
-  .filter-btn:hover, .filter-btn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-
-  /* Filter chips */
   .chip-row { display: flex; gap: 6px; padding: 0 16px 12px; overflow-x: auto; scrollbar-width: none; }
   .chip-row::-webkit-scrollbar { display: none; }
   .chip { font-size: 11px; background: var(--card); border: var(--border-w) solid var(--border); border-radius: 16px; padding: 5px 12px; color: var(--subtext); cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
   .chip.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-
-  /* View toggle */
   .view-toggle { display: flex; gap: 4px; padding: 0 16px 12px; }
   .view-btn { flex: 1; background: var(--card); border: var(--border-w) solid var(--border); border-radius: var(--radius); padding: 7px; font-size: 11px; color: var(--subtext); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.15s; }
   .view-btn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-
-  /* Collection grid */
   .collection { flex: 1; overflow-y: auto; padding: 0 12px 100px; }
   .grid-view { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .list-view { display: flex; flex-direction: column; gap: 8px; }
-
-  /* Record card - grid */
-  .record-card {
-    background: var(--card); border: var(--border-w) solid var(--border);
-    border-radius: var(--radius); overflow: hidden; cursor: pointer;
-    transition: transform 0.15s, border-color 0.15s; position: relative;
-  }
+  .record-card { background: var(--card); border: var(--border-w) solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: transform 0.15s, border-color 0.15s; }
   .record-card:active { transform: scale(0.97); }
   .record-card:hover { border-color: var(--accent); }
   .record-art { width: 100%; aspect-ratio: 1; object-fit: cover; background: var(--artbg); display: block; }
@@ -91,13 +51,7 @@
   .record-title-text { font-size: 12px; font-weight: 500; color: var(--text); font-family: var(--title-font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
   .record-artist { font-size: 10px; color: var(--subtext); font-family: var(--label-font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .record-year { font-size: 10px; color: var(--subtext); margin-top: 3px; }
-
-  /* Record card - list */
-  .record-list-item {
-    background: var(--card); border: var(--border-w) solid var(--border);
-    border-radius: var(--radius); display: flex; align-items: center; gap: 12px;
-    padding: 10px; cursor: pointer; transition: transform 0.15s, border-color 0.15s;
-  }
+  .record-list-item { background: var(--card); border: var(--border-w) solid var(--border); border-radius: var(--radius); display: flex; align-items: center; gap: 12px; padding: 10px; cursor: pointer; transition: transform 0.15s, border-color 0.15s; }
   .record-list-item:active { transform: scale(0.98); }
   .record-list-item:hover { border-color: var(--accent); }
   .list-art { width: 52px; height: 52px; border-radius: calc(var(--radius) - 2px); object-fit: cover; flex-shrink: 0; background: var(--artbg); }
@@ -108,61 +62,30 @@
   .list-meta { display: flex; gap: 6px; margin-top: 4px; }
   .meta-tag { font-size: 9px; background: var(--surface); border: 0.5px solid var(--surface-border); border-radius: 4px; padding: 2px 6px; color: var(--subtext); }
   .list-chevron { color: var(--subtext); font-size: 14px; flex-shrink: 0; }
-
-  /* Stats bar */
   .stats-bar { display: flex; gap: 8px; padding: 8px 16px 4px; }
   .stat { flex: 1; background: var(--card); border: var(--border-w) solid var(--border); border-radius: var(--radius); padding: 8px; text-align: center; }
   .stat-num { font-size: 18px; font-weight: 700; color: var(--accent); font-family: var(--title-font); }
   .stat-lbl { font-size: 9px; color: var(--subtext); margin-top: 1px; }
-
-  /* Bottom tab bar */
-  .tab-bar {
-    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-    width: 100%; max-width: 430px; background: var(--bg);
-    border-top: var(--border-w) solid var(--border);
-    display: flex; padding: 8px 0 24px; z-index: 200;
-    transition: background 0.3s;
-  }
+  .tab-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: var(--bg); border-top: var(--border-w) solid var(--border); display: flex; padding: 8px 0 24px; z-index: 200; transition: background 0.3s; }
   .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px 0; }
   .tab-item .ti { font-size: 22px; color: var(--subtext); transition: color 0.15s; }
   .tab-item.active .ti { color: var(--accent); }
   .tab-item span { font-size: 9px; color: var(--subtext); transition: color 0.15s; }
   .tab-item.active span { color: var(--accent); }
-
-  /* Random picker button (floating) */
-  .fab {
-    position: fixed; bottom: 88px; right: calc(50% - 215px + 16px);
-    width: 52px; height: 52px; border-radius: 50%;
-    background: var(--accent); border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px; color: var(--accent-text); z-index: 150;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.4); transition: transform 0.15s;
-  }
+  .fab { position: fixed; bottom: 88px; right: calc(50% - 215px + 16px); width: 52px; height: 52px; border-radius: 50%; background: var(--accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--accent-text); z-index: 150; box-shadow: 0 4px 16px rgba(0,0,0,0.4); transition: transform 0.15s; }
   .fab:active { transform: scale(0.92); }
-
-  /* Loading state */
   .loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; gap: 16px; }
   .spinner { width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .loading-text { font-size: 13px; color: var(--subtext); }
-
-  /* Token setup screen */
   .setup-screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 24px; gap: 20px; text-align: center; }
   .setup-disc { width: 80px; height: 80px; border-radius: 50%; background: var(--card); border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center; margin: 0 auto; }
   .setup-disc .disc-hole-lg { width: 14px; height: 14px; border-radius: 50%; background: var(--bg); }
   .setup-title { font-size: 22px; font-weight: 700; color: var(--text); font-family: var(--title-font); }
   .setup-sub { font-size: 13px; color: var(--subtext); line-height: 1.6; max-width: 280px; }
-  .token-input { width: 100%; background: var(--card); border: var(--border-w) solid var(--border); border-radius: var(--radius); padding: 12px 16px; font-size: 13px; color: var(--text); outline: none; font-family: 'Courier New', monospace; transition: border-color 0.15s; }
-  .token-input:focus { border-color: var(--accent); }
   .token-btn { width: 100%; background: var(--accent); border: none; border-radius: var(--btn-shape); padding: 14px; font-size: 14px; font-weight: 600; color: var(--accent-text); cursor: pointer; transition: opacity 0.15s; font-family: inherit; }
   .token-btn:hover { opacity: 0.88; }
-
-  /* Record detail overlay */
-  .detail-overlay {
-    position: fixed; inset: 0; z-index: 500; background: var(--bg);
-    transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.32,0.72,0,1);
-    overflow-y: auto; max-width: 430px; left: 50%; margin-left: -215px;
-  }
+  .detail-overlay { position: fixed; inset: 0; z-index: 500; background: var(--bg); transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.32,0.72,0,1); overflow-y: auto; max-width: 430px; left: 50%; margin-left: -215px; }
   .detail-overlay.open { transform: translateY(0); }
   .detail-hero { width: 100%; aspect-ratio: 1; object-fit: cover; background: var(--artbg); display: block; }
   .detail-hero-placeholder { width: 100%; aspect-ratio: 1; background: var(--artbg); display: flex; align-items: center; justify-content: center; }
@@ -183,14 +106,7 @@
   .track-title { font-size: 13px; color: var(--text); flex: 1; }
   .track-dur { font-size: 11px; color: var(--subtext); }
   .ai-chat-btn { width: 100%; background: var(--accent); border: none; border-radius: var(--btn-shape); padding: 16px; font-size: 15px; font-weight: 600; color: var(--accent-text); cursor: pointer; margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; }
-
-  /* Random picker overlay */
-  .random-overlay {
-    position: fixed; inset: 0; z-index: 600; background: rgba(0,0,0,0.92);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    opacity: 0; pointer-events: none; transition: opacity 0.3s;
-    max-width: 430px; left: 50%; margin-left: -215px;
-  }
+  .random-overlay { position: fixed; inset: 0; z-index: 600; background: rgba(0,0,0,0.92); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; max-width: 430px; left: 50%; margin-left: -215px; }
   .random-overlay.open { opacity: 1; pointer-events: all; }
   .random-card { background: var(--card); border: var(--border-w) solid var(--border); border-radius: 16px; overflow: hidden; width: 260px; }
   .random-art { width: 100%; aspect-ratio: 1; object-fit: cover; background: var(--artbg); }
@@ -202,28 +118,12 @@
   .random-btn-sec { flex: 1; background: var(--card); border: var(--border-w) solid var(--border); border-radius: var(--radius); padding: 10px; font-size: 12px; color: var(--text); cursor: pointer; text-align: center; font-family: inherit; }
   .random-btn-pri { flex: 1; background: var(--accent); border: none; border-radius: var(--radius); padding: 10px; font-size: 12px; color: var(--accent-text); cursor: pointer; font-weight: 600; font-family: inherit; }
   .random-label { font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.1em; }
-
-  /* Settings panel */
-  .settings-panel {
-    position: fixed; inset: 0; z-index: 400; background: var(--bg);
-    transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
-    max-width: 430px; left: 50%; margin-left: -215px;
-    display: flex; flex-direction: column;
-  }
+  .settings-panel { position: fixed; inset: 0; z-index: 400; background: var(--bg); transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.32,0.72,0,1); max-width: 430px; left: 50%; margin-left: -215px; display: flex; flex-direction: column; }
   .settings-panel.open { transform: translateX(0); }
   .settings-header { padding: 52px 20px 16px; border-bottom: var(--border-w) solid var(--border); display: flex; align-items: center; gap: 12px; }
   .settings-title { font-size: 20px; font-weight: 700; color: var(--text); flex: 1; }
-
-  /* STICKY theme preview */
-  .theme-preview-sticky {
-    position: sticky; top: 0; z-index: 10;
-    background: var(--bg); padding: 12px 16px;
-    border-bottom: var(--border-w) solid var(--border);
-  }
-  .theme-preview-card {
-    background: var(--card); border: var(--border-w) solid var(--border);
-    border-radius: var(--radius); padding: 12px; display: flex; align-items: center; gap: 12px;
-  }
+  .theme-preview-sticky { position: sticky; top: 0; z-index: 10; background: var(--bg); padding: 12px 16px; border-bottom: var(--border-w) solid var(--border); }
+  .theme-preview-card { background: var(--card); border: var(--border-w) solid var(--border); border-radius: var(--radius); padding: 12px; display: flex; align-items: center; gap: 12px; }
   .preview-disc-sm { width: 44px; height: 44px; border-radius: 50%; background: var(--disc); border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
   .preview-disc-sm .hole { width: 7px; height: 7px; border-radius: 50%; background: var(--bg); }
   .preview-info { flex: 1; min-width: 0; }
@@ -231,40 +131,25 @@
   .preview-rec-sub { font-size: 10px; color: var(--subtext); font-family: var(--label-font); transition: all 0.2s; }
   .preview-accent-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); flex-shrink: 0; transition: background 0.2s; }
   .preview-label { font-size: 9px; color: var(--subtext); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
-
-  /* Settings scrollable body */
   .settings-body { flex: 1; overflow-y: auto; padding-bottom: 40px; }
   .settings-section { padding: 16px 16px 0; }
   .settings-section-title { font-size: 10px; font-weight: 500; color: var(--subtext); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
-
-  /* Preset theme row */
   .preset-scroll { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
   .preset-scroll::-webkit-scrollbar { display: none; }
-  .preset-pill {
-    flex-shrink: 0; display: flex; align-items: center; gap: 6px;
-    background: var(--card); border: var(--border-w) solid var(--border);
-    border-radius: 20px; padding: 6px 12px; cursor: pointer; font-size: 11px;
-    color: var(--subtext); transition: all 0.15s; white-space: nowrap;
-  }
+  .preset-pill { flex-shrink: 0; display: flex; align-items: center; gap: 6px; background: var(--card); border: var(--border-w) solid var(--border); border-radius: 20px; padding: 6px 12px; cursor: pointer; font-size: 11px; color: var(--subtext); transition: all 0.15s; white-space: nowrap; }
   .preset-pill.active { border-color: var(--accent); color: var(--text); }
   .preset-dot { width: 10px; height: 10px; border-radius: 50%; border: 0.5px solid rgba(255,255,255,0.2); }
-
-  /* Color control rows */
   .ctrl-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: var(--border-w) solid var(--border); gap: 12px; }
   .ctrl-label { font-size: 12px; color: var(--text); }
-  .ctrl-sub { font-size: 10px; color: var(--subtext); }
   .color-btn { width: 32px; height: 22px; border-radius: 4px; border: var(--border-w) solid var(--border); cursor: pointer; padding: 1px; background: none; }
   .ctrl-select { background: var(--card); border: var(--border-w) solid var(--border); border-radius: var(--radius); padding: 5px 8px; font-size: 11px; color: var(--text); cursor: pointer; font-family: inherit; }
   .ctrl-range-row { display: flex; align-items: center; gap: 10px; flex: 1; }
   .ctrl-range-row input[type=range] { flex: 1; accent-color: var(--accent); }
   .ctrl-val { font-size: 10px; color: var(--subtext); min-width: 30px; text-align: right; }
-
-  /* Empty / error */
   .empty-state { text-align: center; padding: 60px 24px; }
   .empty-icon { font-size: 40px; color: var(--subtext); margin-bottom: 16px; }
   .empty-title { font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 8px; }
   .empty-sub { font-size: 13px; color: var(--subtext); line-height: 1.6; }
-
   @media (min-width: 430px) {
     .tab-bar, .detail-overlay, .random-overlay, .settings-panel { max-width: 430px; margin-left: -215px; left: 50%; }
     .fab { right: calc(50% - 215px + 16px); }
@@ -272,20 +157,11 @@
 </style>
 </head>
 <body>
-
 <div id="app">
   <div class="bg-skin" id="bg-skin"></div>
-  <div class="app-content" id="app-content">
-    <!-- Content rendered by JS -->
-  </div>
+  <div class="app-content" id="app-content"></div>
 </div>
-
-<!-- Record Detail -->
-<div class="detail-overlay" id="detail-overlay">
-  <div id="detail-content"></div>
-</div>
-
-<!-- Random Picker -->
+<div class="detail-overlay" id="detail-overlay"><div id="detail-content"></div></div>
 <div class="random-overlay" id="random-overlay">
   <p class="random-label">🎲 Tonight's spin</p>
   <div class="random-card" id="random-card"></div>
@@ -293,21 +169,17 @@
     <button class="random-btn-sec" onclick="pickRandom()">Pick again</button>
     <button class="random-btn-pri" onclick="openRandomDetail()">View record</button>
   </div>
-  <button class="random-btn-sec" style="margin-top:12px; width:260px; background:transparent; border-color:rgba(255,255,255,0.15); color:rgba(255,255,255,0.5);" onclick="closeRandom()">Close</button>
+  <button class="random-btn-sec" style="margin-top:12px;width:260px;background:transparent;border-color:rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);" onclick="closeRandom()">Close</button>
 </div>
-
-<!-- Settings Panel -->
 <div class="settings-panel" id="settings-panel">
   <div class="settings-header">
-    <button class="nav-btn" onclick="closeSettings()" aria-label="Close settings">&#8592;</button>
+    <button class="nav-btn" onclick="closeSettings()">&#8592;</button>
     <span class="settings-title">Themes & skins</span>
   </div>
-
-  <!-- STICKY PREVIEW — always visible -->
   <div class="theme-preview-sticky">
     <p class="preview-label">Live preview</p>
-    <div class="theme-preview-card" id="theme-preview-card">
-      <div class="preview-disc-sm" id="prev-disc-sm"><div class="hole"></div></div>
+    <div class="theme-preview-card">
+      <div class="preview-disc-sm"><div class="hole"></div></div>
       <div class="preview-info">
         <div class="preview-rec-title" id="prev-rec-title-sm">Rumours</div>
         <div class="preview-rec-sub" id="prev-rec-sub-sm">Fleetwood Mac · 1977</div>
@@ -315,122 +187,44 @@
       <div class="preview-accent-dot" id="prev-accent-dot"></div>
     </div>
   </div>
-
-  <!-- Scrollable controls -->
   <div class="settings-body" id="settings-body">
     <div class="settings-section">
       <div class="settings-section-title">Preset themes</div>
       <div class="preset-scroll" id="preset-scroll"></div>
     </div>
-
     <div class="settings-section" style="margin-top:16px;">
       <div class="settings-section-title">Colors</div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Background</div></div>
-        <input type="color" class="color-btn" id="c-bg" oninput="applyCustom()">
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Card surface</div></div>
-        <input type="color" class="color-btn" id="c-card" oninput="applyCustom()">
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Accent color</div></div>
-        <input type="color" class="color-btn" id="c-accent" oninput="applyCustom()">
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Accent text</div></div>
-        <input type="color" class="color-btn" id="c-accenttext" oninput="applyCustom()">
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Primary text</div></div>
-        <input type="color" class="color-btn" id="c-text" oninput="applyCustom()">
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Secondary text</div></div>
-        <input type="color" class="color-btn" id="c-subtext" oninput="applyCustom()">
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Border color</div></div>
-        <input type="color" class="color-btn" id="c-border" oninput="applyCustom()">
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Disc color</div></div>
-        <input type="color" class="color-btn" id="c-disc" oninput="applyCustom()">
-      </div>
-      <div class="ctrl-row" style="border-bottom:none;">
-        <div><div class="ctrl-label">Art area background</div></div>
-        <input type="color" class="color-btn" id="c-artbg" oninput="applyCustom()">
-      </div>
+      <div class="ctrl-row"><div><div class="ctrl-label">Background</div></div><input type="color" class="color-btn" id="c-bg" oninput="applyCustom()"></div>
+      <div class="ctrl-row"><div><div class="ctrl-label">Card surface</div></div><input type="color" class="color-btn" id="c-card" oninput="applyCustom()"></div>
+      <div class="ctrl-row"><div><div class="ctrl-label">Accent color</div></div><input type="color" class="color-btn" id="c-accent" oninput="applyCustom()"></div>
+      <div class="ctrl-row"><div><div class="ctrl-label">Accent text</div></div><input type="color" class="color-btn" id="c-accenttext" oninput="applyCustom()"></div>
+      <div class="ctrl-row"><div><div class="ctrl-label">Primary text</div></div><input type="color" class="color-btn" id="c-text" oninput="applyCustom()"></div>
+      <div class="ctrl-row"><div><div class="ctrl-label">Secondary text</div></div><input type="color" class="color-btn" id="c-subtext" oninput="applyCustom()"></div>
+      <div class="ctrl-row"><div><div class="ctrl-label">Border color</div></div><input type="color" class="color-btn" id="c-border" oninput="applyCustom()"></div>
+      <div class="ctrl-row"><div><div class="ctrl-label">Disc color</div></div><input type="color" class="color-btn" id="c-disc" oninput="applyCustom()"></div>
+      <div class="ctrl-row" style="border-bottom:none;"><div><div class="ctrl-label">Art area background</div></div><input type="color" class="color-btn" id="c-artbg" oninput="applyCustom()"></div>
     </div>
-
     <div class="settings-section" style="margin-top:16px;">
       <div class="settings-section-title">Typography</div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Title font</div></div>
-        <select class="ctrl-select" id="f-title" onchange="applyCustom()">
-          <option value="system-ui,sans-serif">System</option>
-          <option value="Georgia,serif">Georgia</option>
-          <option value="'Courier New',monospace">Courier</option>
-          <option value="Palatino,serif">Palatino</option>
-          <option value="'Arial Narrow',sans-serif">Arial Narrow</option>
-        </select>
-      </div>
-      <div class="ctrl-row" style="border-bottom:none;">
-        <div><div class="ctrl-label">Label font</div></div>
-        <select class="ctrl-select" id="f-label" onchange="applyCustom()">
-          <option value="system-ui,sans-serif">System</option>
-          <option value="Georgia,serif">Georgia</option>
-          <option value="'Courier New',monospace">Courier</option>
-        </select>
-      </div>
+      <div class="ctrl-row"><div><div class="ctrl-label">Title font</div></div><select class="ctrl-select" id="f-title" onchange="applyCustom()"><option value="system-ui,sans-serif">System</option><option value="Georgia,serif">Georgia</option><option value="'Courier New',monospace">Courier</option><option value="Palatino,serif">Palatino</option><option value="'Arial Narrow',sans-serif">Arial Narrow</option></select></div>
+      <div class="ctrl-row" style="border-bottom:none;"><div><div class="ctrl-label">Label font</div></div><select class="ctrl-select" id="f-label" onchange="applyCustom()"><option value="system-ui,sans-serif">System</option><option value="Georgia,serif">Georgia</option><option value="'Courier New',monospace">Courier</option></select></div>
     </div>
-
     <div class="settings-section" style="margin-top:16px;">
       <div class="settings-section-title">Layout & shape</div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Card corners</div></div>
-        <div class="ctrl-range-row">
-          <input type="range" min="0" max="20" step="1" id="l-radius" oninput="document.getElementById('l-radius-val').textContent=this.value+'px'; applyCustom()">
-          <span class="ctrl-val" id="l-radius-val">6px</span>
-        </div>
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Border width</div></div>
-        <select class="ctrl-select" id="l-borderw" onchange="applyCustom()">
-          <option value="0px">None</option>
-          <option value="0.5px" selected>Thin</option>
-          <option value="1px">Medium</option>
-          <option value="2px">Bold</option>
-        </select>
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Button shape</div></div>
-        <select class="ctrl-select" id="l-btnshape" onchange="applyCustom()">
-          <option value="4px">Sharp</option>
-          <option value="8px" selected>Rounded</option>
-          <option value="24px">Pill</option>
-        </select>
-      </div>
-      <div class="ctrl-row" style="border-bottom:none;">
-        <div><div class="ctrl-label">Spacing</div></div>
-        <select class="ctrl-select" id="l-density" onchange="applyCustom()">
-          <option value="4">Compact</option>
-          <option value="8" selected>Normal</option>
-          <option value="14">Spacious</option>
-        </select>
-      </div>
+      <div class="ctrl-row"><div><div class="ctrl-label">Card corners</div></div><div class="ctrl-range-row"><input type="range" min="0" max="20" step="1" id="l-radius" oninput="document.getElementById('l-radius-val').textContent=this.value+'px';applyCustom()"><span class="ctrl-val" id="l-radius-val">6px</span></div></div>
+      <div class="ctrl-row"><div><div class="ctrl-label">Border width</div></div><select class="ctrl-select" id="l-borderw" onchange="applyCustom()"><option value="0px">None</option><option value="0.5px" selected>Thin</option><option value="1px">Medium</option><option value="2px">Bold</option></select></div>
+      <div class="ctrl-row"><div><div class="ctrl-label">Button shape</div></div><select class="ctrl-select" id="l-btnshape" onchange="applyCustom()"><option value="4px">Sharp</option><option value="8px" selected>Rounded</option><option value="24px">Pill</option></select></div>
+      <div class="ctrl-row" style="border-bottom:none;"><div><div class="ctrl-label">Spacing</div></div><select class="ctrl-select" id="l-density" onchange="applyCustom()"><option value="4">Compact</option><option value="8" selected>Normal</option><option value="14">Spacious</option></select></div>
     </div>
-
-    <div class="settings-section" style="margin-top:16px; padding-bottom:16px;">
+    <div class="settings-section" style="margin-top:16px;padding-bottom:16px;">
       <div class="settings-section-title">Discogs account</div>
-      <div class="ctrl-row" style="border-bottom:none; flex-direction:column; align-items:stretch; gap:8px;">
-        <p style="font-size:12px; color:var(--subtext); line-height:1.6;">Signed in as <strong style="color:var(--text);" id="settings-username">your account</strong>. Your collection syncs automatically.</p>
-        <button class="token-btn" onclick="reconnect()" style="font-size:13px; padding:10px; background:transparent; border:var(--border-w) solid var(--border); color:var(--text);">Switch Discogs account</button>
+      <div class="ctrl-row" style="border-bottom:none;flex-direction:column;align-items:stretch;gap:8px;">
+        <p style="font-size:12px;color:var(--subtext);line-height:1.6;">Signed in as <strong style="color:var(--text);" id="settings-username">your account</strong>.</p>
+        <button class="token-btn" onclick="reconnect()" style="font-size:13px;padding:10px;background:transparent;border:var(--border-w) solid var(--border);color:var(--text);">Switch Discogs account</button>
       </div>
     </div>
   </div>
 </div>
-
 <script>
 const PRESETS = [
   { id:'dark', name:'Wax & Shadow', bg:'#1a1410', card:'#241c10', accent:'#c47f1a', accenttext:'#1a1410', text:'#f0c870', subtext:'#7a6040', border:'#3a2c18', disc:'#5a4020', artbg:'#2a2018', titleFont:'system-ui,sans-serif', labelFont:'system-ui,sans-serif', radius:6, borderW:'0.5px', btnShape:'8px', density:8 },
@@ -442,453 +236,39 @@ const PRESETS = [
   { id:'rosewood', name:'Warm Rosewood', bg:'#1e0c10', card:'#2a1018', accent:'#a03050', accenttext:'#ffe8ee', text:'#e8a0b0', subtext:'#804050', border:'#3a1828', disc:'#6a2038', artbg:'#2a1018', titleFont:'Georgia,serif', labelFont:'system-ui,sans-serif', radius:8, borderW:'0.5px', btnShape:'8px', density:8 },
   { id:'arctic', name:'Arctic White', bg:'#ffffff', card:'#f4f4f4', accent:'#333333', accenttext:'#ffffff', text:'#111111', subtext:'#aaaaaa', border:'#e8e8e8', disc:'#cccccc', artbg:'#f0f0f0', titleFont:'system-ui,sans-serif', labelFont:'system-ui,sans-serif', radius:0, borderW:'0.5px', btnShape:'0px', density:6 },
 ];
-
-
-let USERNAME = '';
-let releases = [];
-let filtered = [];
-let viewMode = 'grid';
-let currentFilter = 'all';
-let searchQuery = '';
-let currentRecord = null;
-let randomRecord = null;
-let currentTheme = PRESETS[0];
-
-// Apply theme to CSS vars
-function applyTheme(t) {
-  const r = document.documentElement;
-  r.style.setProperty('--bg', t.bg);
-  r.style.setProperty('--card', t.card);
-  r.style.setProperty('--accent', t.accent);
-  r.style.setProperty('--accent-text', t.accenttext);
-  r.style.setProperty('--text', t.text);
-  r.style.setProperty('--subtext', t.subtext);
-  r.style.setProperty('--border', t.border);
-  r.style.setProperty('--disc', t.disc);
-  r.style.setProperty('--artbg', t.artbg);
-  r.style.setProperty('--title-font', t.titleFont);
-  r.style.setProperty('--label-font', t.labelFont);
-  r.style.setProperty('--radius', (t.radius||6)+'px');
-  r.style.setProperty('--border-w', t.borderW||'0.5px');
-  r.style.setProperty('--btn-shape', t.btnShape||'8px');
-  r.style.setProperty('--density', (t.density||8)+'px');
-  currentTheme = t;
-}
-
-function applyCustom() {
-  const t = {
-    bg: document.getElementById('c-bg').value,
-    card: document.getElementById('c-card').value,
-    accent: document.getElementById('c-accent').value,
-    accenttext: document.getElementById('c-accenttext').value,
-    text: document.getElementById('c-text').value,
-    subtext: document.getElementById('c-subtext').value,
-    border: document.getElementById('c-border').value,
-    disc: document.getElementById('c-disc').value,
-    artbg: document.getElementById('c-artbg').value,
-    titleFont: document.getElementById('f-title').value,
-    labelFont: document.getElementById('f-label').value,
-    radius: parseInt(document.getElementById('l-radius').value),
-    borderW: document.getElementById('l-borderw').value,
-    btnShape: document.getElementById('l-btnshape').value,
-    density: parseInt(document.getElementById('l-density').value),
-  };
-  applyTheme(t);
-  document.querySelectorAll('.preset-pill').forEach(p => p.classList.remove('active'));
-}
-
-function syncControlsToTheme(t) {
-  document.getElementById('c-bg').value = t.bg;
-  document.getElementById('c-card').value = t.card;
-  document.getElementById('c-accent').value = t.accent;
-  document.getElementById('c-accenttext').value = t.accenttext;
-  document.getElementById('c-text').value = t.text;
-  document.getElementById('c-subtext').value = t.subtext;
-  document.getElementById('c-border').value = t.border;
-  document.getElementById('c-disc').value = t.disc;
-  document.getElementById('c-artbg').value = t.artbg;
-  document.getElementById('f-title').value = t.titleFont;
-  document.getElementById('f-label').value = t.labelFont;
-  const rad = document.getElementById('l-radius');
-  rad.value = t.radius || 6;
-  document.getElementById('l-radius-val').textContent = (t.radius||6)+'px';
-  document.getElementById('l-borderw').value = t.borderW || '0.5px';
-  document.getElementById('l-btnshape').value = t.btnShape || '8px';
-  document.getElementById('l-density').value = t.density || 8;
-}
-
-function buildPresetPills() {
-  const c = document.getElementById('preset-scroll');
-  c.innerHTML = '';
-  PRESETS.forEach(p => {
-    const btn = document.createElement('button');
-    btn.className = 'preset-pill' + (p.id === currentTheme.id ? ' active' : '');
-    btn.dataset.id = p.id;
-    btn.innerHTML = '<span class="preset-dot" style="background:'+p.accent+';"></span>' + p.name;
-    btn.onclick = () => {
-      document.querySelectorAll('.preset-pill').forEach(x => x.classList.remove('active'));
-      btn.classList.add('active');
-      applyTheme(p);
-      syncControlsToTheme(p);
-    };
-    c.appendChild(btn);
-  });
-}
-
-// Backend API — session key stored in localStorage, passed as ?sk= param
-function getSK() { return localStorage.getItem('wax_sk') || ''; }
-
-async function apiGet(endpoint) {
-  const sk = getSK();
-  const sep = endpoint.includes('?') ? '&' : '?';
-  const res = await fetch(endpoint + (sk ? sep + 'sk=' + sk : ''));
-  if (res.status === 401) throw new Error('not_authenticated');
-  if (!res.ok) throw new Error('API error ' + res.status);
-  return res.json();
-}
-
-async function checkAuthStatus() {
-  return apiGet('/auth/status');
-}
-
-async function fetchCollection() {
-  return apiGet('/api/collection');
-}
-
-function renderApp() {
-  document.getElementById('app-content').innerHTML = `
-    <div class="nav">
-      <div>
-        <div class="nav-title">Wax</div>
-        <div class="nav-sub">${releases.length} records</div>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="nav-btn" onclick="openSettings()" aria-label="Settings">&#9881;</button>
-      </div>
-    </div>
-    <div class="search-bar">
-      <div class="search-wrap">
-        <span class="search-icon">&#128269;</span>
-        <input class="search-input" type="search" placeholder="Search records, artists..." id="search-input" oninput="handleSearch(this.value)" value="${searchQuery}">
-      </div>
-    </div>
-    <div class="chip-row" id="chip-row"></div>
-    <div class="stats-bar">
-      <div class="stat"><div class="stat-num">${releases.length}</div><div class="stat-lbl">Records</div></div>
-      <div class="stat"><div class="stat-num">${new Set(releases.map(r=>r.basic_information.artists[0]?.name)).size}</div><div class="stat-lbl">Artists</div></div>
-      <div class="stat"><div class="stat-num">${new Set(releases.map(r=>r.basic_information.genres?.[0]).filter(Boolean)).size}</div><div class="stat-lbl">Genres</div></div>
-    </div>
-    <div class="view-toggle">
-      <button class="view-btn ${viewMode==='grid'?'active':''}" onclick="setView('grid')">&#9783; Grid</button>
-      <button class="view-btn ${viewMode==='list'?'active':''}" onclick="setView('list')">&#9776; List</button>
-    </div>
-    <div class="collection ${viewMode===('grid')?'grid-view':'list-view'}" id="collection-container"></div>
-    <div class="tab-bar">
-      <div class="tab-item active"><span class="ti">&#9679;</span><span>Collection</span></div>
-      <div class="tab-item" onclick="openSettings()"><span class="ti">&#9881;</span><span>Themes</span></div>
-    </div>
-    <button class="fab" onclick="openRandom()" aria-label="Pick random record" title="Pick a random record">&#127922;</button>
-  `;
-  renderChips();
-  renderCollection();
-}
-
-function renderChips() {
-  const genres = [...new Set(releases.map(r => r.basic_information.genres?.[0]).filter(Boolean))].sort();
-  const c = document.getElementById('chip-row');
-  if (!c) return;
-  c.innerHTML = '';
-  const allChip = document.createElement('button');
-  allChip.className = 'chip' + (currentFilter==='all'?' active':'');
-  allChip.textContent = 'All';
-  allChip.onclick = () => setFilter('all');
-  c.appendChild(allChip);
-  genres.slice(0,8).forEach(g => {
-    const chip = document.createElement('button');
-    chip.className = 'chip' + (currentFilter===g?' active':'');
-    chip.textContent = g;
-    chip.onclick = () => setFilter(g);
-    c.appendChild(chip);
-  });
-}
-
-function setFilter(f) {
-  currentFilter = f;
-  filterAndRender();
-}
-
-function handleSearch(q) {
-  searchQuery = q;
-  filterAndRender();
-}
-
-function filterAndRender() {
-  filtered = releases.filter(r => {
-    const bi = r.basic_information;
-    const matchGenre = currentFilter === 'all' || (bi.genres || []).includes(currentFilter);
-    const q = searchQuery.toLowerCase();
-    const matchSearch = !q || bi.title.toLowerCase().includes(q) || (bi.artists[0]?.name||'').toLowerCase().includes(q);
-    return matchGenre && matchSearch;
-  });
-  renderCollection();
-  renderChips();
-}
-
-function artImg(url, cls, placeholder) {
-  if (url && url !== 'https://st.discogs.com/') {
-    return `<img class="${cls}" src="${url}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-    <div class="${cls.replace('record-art','record-art-placeholder').replace('list-art','list-art-placeholder')}" style="display:none;">${placeholder}</div>`;
-  }
-  return `<div class="${cls.replace('record-art','record-art-placeholder').replace('list-art','list-art-placeholder')}">${placeholder}</div>`;
-}
-
-const discPlaceholder = `<div class="disc-icon"><div class="disc-hole"></div></div>`;
-const discPlaceholderSm = `<div style="width:28px;height:28px;border-radius:50%;background:var(--disc);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;"><div style="width:5px;height:5px;border-radius:50%;background:var(--artbg);"></div></div>`;
-
-function renderCollection() {
-  const con = document.getElementById('collection-container');
-  if (!con) return;
-  const list = filtered.length || searchQuery || currentFilter !== 'all' ? filtered : releases;
-  if (list.length === 0) {
-    con.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">&#127902;</div><div class="empty-title">No records found</div><div class="empty-sub">Try a different search or filter.</div></div>`;
-    return;
-  }
-  if (viewMode === 'grid') {
-    con.innerHTML = list.map((r,i) => {
-      const bi = r.basic_information;
-      const art = bi.cover_image || bi.thumb || '';
-      return `<div class="record-card" onclick="openDetail(${i})">
-        ${artImg(art,'record-art',discPlaceholder)}
-        <div class="record-info">
-          <div class="record-title-text">${escHtml(bi.title)}</div>
-          <div class="record-artist">${escHtml(bi.artists[0]?.name||'Unknown')}</div>
-          <div class="record-year">${bi.year||''}</div>
-        </div>
-      </div>`;
-    }).join('');
-  } else {
-    con.innerHTML = list.map((r,i) => {
-      const bi = r.basic_information;
-      const art = bi.cover_image || bi.thumb || '';
-      const format = bi.formats?.[0]?.name || '';
-      const genre = bi.genres?.[0] || '';
-      return `<div class="record-list-item" onclick="openDetail(${i})">
-        ${artImg(art,'list-art',discPlaceholderSm)}
-        <div class="list-info">
-          <div class="list-title">${escHtml(bi.title)}</div>
-          <div class="list-artist">${escHtml(bi.artists[0]?.name||'Unknown')}</div>
-          <div class="list-meta">
-            ${format?`<span class="meta-tag">${escHtml(format)}</span>`:''}
-            ${genre?`<span class="meta-tag">${escHtml(genre)}</span>`:''}
-            ${bi.year?`<span class="meta-tag">${bi.year}</span>`:''}
-          </div>
-        </div>
-        <span class="list-chevron">&#8250;</span>
-      </div>`;
-    }).join('');
-  }
-}
-
-function setView(v) {
-  viewMode = v;
-  const con = document.getElementById('collection-container');
-  if (con) { con.className = 'collection ' + (v==='grid'?'grid-view':'list-view'); }
-  document.querySelectorAll('.view-btn').forEach((b,i) => b.classList.toggle('active', (i===0&&v==='grid')||(i===1&&v==='list')));
-  renderCollection();
-}
-
-function openDetail(idx) {
-  const list = filtered.length || searchQuery || currentFilter !== 'all' ? filtered : releases;
-  currentRecord = list[idx];
-  const bi = currentRecord.basic_information;
-  const art = bi.cover_image || bi.thumb || '';
-  const overlay = document.getElementById('detail-overlay');
-  document.getElementById('detail-content').innerHTML = `
-    <div style="position:relative;">
-      <div class="detail-back">
-        <button class="detail-back-btn" onclick="closeDetail()" aria-label="Go back">&#8592;</button>
-      </div>
-      ${art && art !== 'https://st.discogs.com/'
-        ? `<img class="detail-hero" src="${art}" alt="${escHtml(bi.title)}" style="margin-top:-80px;">`
-        : `<div class="detail-hero-placeholder" style="margin-top:-80px;"><div class="detail-hero-disc"><div class="detail-hero-hole"></div></div></div>`}
-    </div>
-    <div class="detail-body">
-      <h1 class="detail-title">${escHtml(bi.title)}</h1>
-      <p class="detail-artist">${escHtml(bi.artists[0]?.name||'Unknown Artist')}</p>
-      <div class="detail-grid">
-        <div class="detail-chip"><div class="detail-chip-label">Year</div><div class="detail-chip-val">${bi.year||'—'}</div></div>
-        <div class="detail-chip"><div class="detail-chip-label">Format</div><div class="detail-chip-val">${bi.formats?.[0]?.name||'—'}</div></div>
-        <div class="detail-chip"><div class="detail-chip-label">Label</div><div class="detail-chip-val">${bi.labels?.[0]?.name||'—'}</div></div>
-        <div class="detail-chip"><div class="detail-chip-label">Genre</div><div class="detail-chip-val">${bi.genres?.[0]||'—'}</div></div>
-        ${bi.styles?.[0]?`<div class="detail-chip"><div class="detail-chip-label">Style</div><div class="detail-chip-val">${bi.styles[0]}</div></div>`:''}
-        ${bi.formats?.[0]?.descriptions?.length?`<div class="detail-chip"><div class="detail-chip-label">Description</div><div class="detail-chip-val">${bi.formats[0].descriptions[0]}</div></div>`:''}
-      </div>
-      <button class="ai-chat-btn" onclick="startAiChat()">
-        &#10024; Chat about this record
-      </button>
-      <div style="height:20px;"></div>
-      <a href="https://www.discogs.com/release/${currentRecord.id}" target="_blank" style="display:block; text-align:center; font-size:12px; color:var(--subtext); text-decoration:none; padding:12px;">View full details on Discogs &#8599;</a>
-    </div>
-  `;
-  overlay.classList.add('open');
-}
-
-function closeDetail() {
-  document.getElementById('detail-overlay').classList.remove('open');
-}
-
-function openRandom() {
-  const list = releases;
-  if (!list.length) return;
-  randomRecord = list[Math.floor(Math.random()*list.length)];
-  renderRandomCard(randomRecord);
-  document.getElementById('random-overlay').classList.add('open');
-}
-
-function pickRandom() {
-  const list = releases;
-  randomRecord = list[Math.floor(Math.random()*list.length)];
-  renderRandomCard(randomRecord);
-}
-
-function renderRandomCard(r) {
-  const bi = r.basic_information;
-  const art = bi.cover_image || bi.thumb || '';
-  document.getElementById('random-card').innerHTML = `
-    ${art && art !== 'https://st.discogs.com/'
-      ? `<img class="random-art" src="${art}" alt="${escHtml(bi.title)}">`
-      : `<div class="random-art-placeholder"><div style="width:80px;height:80px;border-radius:50%;background:var(--disc);border:3px solid var(--border);display:flex;align-items:center;justify-content:center;"><div style="width:14px;height:14px;border-radius:50%;background:var(--artbg);"></div></div></div>`}
-    <div class="random-info">
-      <div class="random-title">${escHtml(bi.title)}</div>
-      <div class="random-artist">${escHtml(bi.artists[0]?.name||'Unknown')}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        ${bi.year?`<span class="meta-tag">${bi.year}</span>`:''}
-        ${bi.formats?.[0]?.name?`<span class="meta-tag">${bi.formats[0].name}</span>`:''}
-        ${bi.genres?.[0]?`<span class="meta-tag">${bi.genres[0]}</span>`:''}
-      </div>
-    </div>
-  `;
-}
-
-function openRandomDetail() {
-  closeRandom();
-  if (randomRecord) {
-    const idx = releases.indexOf(randomRecord);
-    if (idx > -1) openDetail(idx);
-  }
-}
-
-function closeRandom() {
-  document.getElementById('random-overlay').classList.remove('open');
-}
-
-function startAiChat() {
-  if (!currentRecord) return;
-  const bi = currentRecord.basic_information;
-  alert(`AI Chat coming in Phase 4!\n\nWhen built, this will open a chat pre-loaded with context about:\n"${bi.title}" by ${bi.artists[0]?.name||'Unknown'} (${bi.year||'?'})\n\nYou'll be able to ask about the recording, band history, what to listen for, and similar recommendations.`);
-}
-
-function openSettings() {
-  buildPresetPills();
-  syncControlsToTheme(currentTheme);
-  const unEl = document.getElementById('settings-username');
-  if (unEl && USERNAME) unEl.textContent = USERNAME;
-  document.getElementById('settings-panel').classList.add('open');
-  document.getElementById('settings-body').scrollTop = 0;
-}
-
-function closeSettings() {
-  document.getElementById('settings-panel').classList.remove('open');
-}
-
-function reconnect() {
-  if (confirm('This will log you out and reconnect your Discogs account. Continue?')) {
-    const sk = localStorage.getItem('wax_sk') || '';
-    localStorage.removeItem('wax_sk');
-    localStorage.removeItem('wax_user');
-    fetch('/auth/logout?sk=' + sk).then(() => {
-      window.location.href = '/auth/login';
-    });
-  }
-}
-
-function escHtml(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function showLogin(errorMsg) {
-  document.getElementById('app-content').innerHTML = `
-    <div class="setup-screen">
-      <div class="setup-disc"><div class="disc-hole-lg"></div></div>
-      <div class="setup-title">Welcome to Wax</div>
-      <div class="setup-sub">Connect your Discogs collection to get started. Sign in with your Discogs account — your collection loads automatically.</div>
-      ${errorMsg ? `<p style="font-size:12px;color:#e05050;background:rgba(224,80,80,0.1);border-radius:8px;padding:10px 14px;width:100%;text-align:center;">${errorMsg}</p>` : ''}
-      <button class="token-btn" onclick="window.location.href='/auth/login'">
-        Connect with Discogs
-      </button>
-      <p style="font-size:11px; color:var(--subtext); line-height:1.6;">You'll be redirected to Discogs to authorize the app, then brought back automatically.</p>
-    </div>
-  `;
-}
-
-function showLoading(msg) {
-  document.getElementById('app-content').innerHTML = `
-    <div class="loading-state">
-      <div class="spinner"></div>
-      <div class="loading-text" style="text-align:center;line-height:1.8;">${msg}</div>
-    </div>
-  `;
-}
-
-async function init() {
-  const params = new URLSearchParams(window.location.search);
-  const authResult = params.get('auth');
-  const authError = params.get('error');
-  const sk = params.get('sk');
-  const user = params.get('user');
-
-  // Save session key from OAuth callback
-  if (sk) {
-    localStorage.setItem('wax_sk', sk);
-    if (user) localStorage.setItem('wax_user', decodeURIComponent(user));
-  }
-
-  // Clean URL
-  if (authResult || authError || sk) {
-    window.history.replaceState({}, '', '/');
-  }
-
-  if (authError) {
-    showLogin('Authorization failed. Please try again.');
-    return;
-  }
-
-  showLoading('Loading Wax…');
-  try {
-    const status = await checkAuthStatus();
-    if (!status.authenticated) {
-      localStorage.removeItem('wax_sk');
-      showLogin();
-      return;
-    }
-    USERNAME = status.username;
-    showLoading(`Loading your collection, ${USERNAME}…<br><span style="font-size:11px;opacity:0.6;">Fetching all your records from Discogs</span>`);
-    const data = await fetchCollection();
-    releases = data.releases || [];
-    filtered = [...releases];
-    applyTheme(currentTheme);
-    renderApp();
-  } catch(e) {
-    if (e.message === 'not_authenticated') {
-      localStorage.removeItem('wax_sk');
-      showLogin();
-    } else {
-      showLogin('Something went wrong. Please try again.');
-      console.error(e);
-    }
-  }
-}
-
+let USERNAME='',releases=[],filtered=[],viewMode='grid',currentFilter='all',searchQuery='',currentRecord=null,randomRecord=null,currentTheme=PRESETS[0];
+function applyTheme(t){const r=document.documentElement;r.style.setProperty('--bg',t.bg);r.style.setProperty('--card',t.card);r.style.setProperty('--accent',t.accent);r.style.setProperty('--accent-text',t.accenttext);r.style.setProperty('--text',t.text);r.style.setProperty('--subtext',t.subtext);r.style.setProperty('--border',t.border);r.style.setProperty('--disc',t.disc);r.style.setProperty('--artbg',t.artbg);r.style.setProperty('--title-font',t.titleFont);r.style.setProperty('--label-font',t.labelFont);r.style.setProperty('--radius',(t.radius||6)+'px');r.style.setProperty('--border-w',t.borderW||'0.5px');r.style.setProperty('--btn-shape',t.btnShape||'8px');r.style.setProperty('--density',(t.density||8)+'px');currentTheme=t;}
+function applyCustom(){const t={bg:document.getElementById('c-bg').value,card:document.getElementById('c-card').value,accent:document.getElementById('c-accent').value,accenttext:document.getElementById('c-accenttext').value,text:document.getElementById('c-text').value,subtext:document.getElementById('c-subtext').value,border:document.getElementById('c-border').value,disc:document.getElementById('c-disc').value,artbg:document.getElementById('c-artbg').value,titleFont:document.getElementById('f-title').value,labelFont:document.getElementById('f-label').value,radius:parseInt(document.getElementById('l-radius').value),borderW:document.getElementById('l-borderw').value,btnShape:document.getElementById('l-btnshape').value,density:parseInt(document.getElementById('l-density').value)};applyTheme(t);document.querySelectorAll('.preset-pill').forEach(p=>p.classList.remove('active'));}
+function syncControlsToTheme(t){document.getElementById('c-bg').value=t.bg;document.getElementById('c-card').value=t.card;document.getElementById('c-accent').value=t.accent;document.getElementById('c-accenttext').value=t.accenttext;document.getElementById('c-text').value=t.text;document.getElementById('c-subtext').value=t.subtext;document.getElementById('c-border').value=t.border;document.getElementById('c-disc').value=t.disc;document.getElementById('c-artbg').value=t.artbg;document.getElementById('f-title').value=t.titleFont;document.getElementById('f-label').value=t.labelFont;const rad=document.getElementById('l-radius');rad.value=t.radius||6;document.getElementById('l-radius-val').textContent=(t.radius||6)+'px';document.getElementById('l-borderw').value=t.borderW||'0.5px';document.getElementById('l-btnshape').value=t.btnShape||'8px';document.getElementById('l-density').value=t.density||8;}
+function buildPresetPills(){const c=document.getElementById('preset-scroll');c.innerHTML='';PRESETS.forEach(p=>{const btn=document.createElement('button');btn.className='preset-pill'+(p.id===currentTheme.id?' active':'');btn.innerHTML='<span class="preset-dot" style="background:'+p.accent+';"></span>'+p.name;btn.onclick=()=>{document.querySelectorAll('.preset-pill').forEach(x=>x.classList.remove('active'));btn.classList.add('active');applyTheme(p);syncControlsToTheme(p);};c.appendChild(btn);});}
+function getSK(){return localStorage.getItem('wax_sk')||'';}
+async function apiGet(endpoint){const sk=getSK();const sep=endpoint.includes('?')?'&':'?';const res=await fetch(endpoint+(sk?sep+'sk='+sk:''));if(res.status===401)throw new Error('not_authenticated');if(!res.ok)throw new Error('API error '+res.status);return res.json();}
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function renderApp(){document.getElementById('app-content').innerHTML=`<div class="nav"><div><div class="nav-title">Wax</div><div class="nav-sub">${releases.length} records</div></div><div style="display:flex;gap:8px;"><button class="nav-btn" onclick="openSettings()">&#9881;</button></div></div><div class="search-bar"><div class="search-wrap"><span class="search-icon">&#128269;</span><input class="search-input" type="search" placeholder="Search records, artists..." id="search-input" oninput="handleSearch(this.value)" value="${searchQuery}"></div></div><div class="chip-row" id="chip-row"></div><div class="stats-bar"><div class="stat"><div class="stat-num">${releases.length}</div><div class="stat-lbl">Records</div></div><div class="stat"><div class="stat-num">${new Set(releases.map(r=>r.basic_information.artists[0]?.name)).size}</div><div class="stat-lbl">Artists</div></div><div class="stat"><div class="stat-num">${new Set(releases.map(r=>r.basic_information.genres?.[0]).filter(Boolean)).size}</div><div class="stat-lbl">Genres</div></div></div><div class="view-toggle"><button class="view-btn ${viewMode==='grid'?'active':''}" onclick="setView('grid')">&#9783; Grid</button><button class="view-btn ${viewMode==='list'?'active':''}" onclick="setView('list')">&#9776; List</button></div><div class="collection ${viewMode==='grid'?'grid-view':'list-view'}" id="collection-container"></div><div class="tab-bar"><div class="tab-item active"><span class="ti">&#9679;</span><span>Collection</span></div><div class="tab-item" onclick="openSettings()"><span class="ti">&#9881;</span><span>Themes</span></div></div><button class="fab" onclick="openRandom()">&#127922;</button>`;renderChips();renderCollection();}
+function renderChips(){const genres=[...new Set(releases.map(r=>r.basic_information.genres?.[0]).filter(Boolean))].sort();const c=document.getElementById('chip-row');if(!c)return;c.innerHTML='';const allChip=document.createElement('button');allChip.className='chip'+(currentFilter==='all'?' active':'');allChip.textContent='All';allChip.onclick=()=>setFilter('all');c.appendChild(allChip);genres.slice(0,8).forEach(g=>{const chip=document.createElement('button');chip.className='chip'+(currentFilter===g?' active':'');chip.textContent=g;chip.onclick=()=>setFilter(g);c.appendChild(chip);});}
+function setFilter(f){currentFilter=f;filterAndRender();}
+function handleSearch(q){searchQuery=q;filterAndRender();}
+function filterAndRender(){filtered=releases.filter(r=>{const bi=r.basic_information;const matchGenre=currentFilter==='all'||(bi.genres||[]).includes(currentFilter);const q=searchQuery.toLowerCase();const matchSearch=!q||bi.title.toLowerCase().includes(q)||(bi.artists[0]?.name||'').toLowerCase().includes(q);return matchGenre&&matchSearch;});renderCollection();renderChips();}
+const discPlaceholder='<div class="disc-icon"><div class="disc-hole"></div></div>';
+const discPlaceholderSm='<div style="width:28px;height:28px;border-radius:50%;background:var(--disc);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;"><div style="width:5px;height:5px;border-radius:50%;background:var(--artbg);"></div></div>';
+function artImg(url,cls,ph){if(url&&url!=='https://st.discogs.com/'){return`<img class="${cls}" src="${url}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="${cls.replace('record-art','record-art-placeholder').replace('list-art','list-art-placeholder')}" style="display:none;">${ph}</div>`;}return`<div class="${cls.replace('record-art','record-art-placeholder').replace('list-art','list-art-placeholder')}">${ph}</div>`;}
+function renderCollection(){const con=document.getElementById('collection-container');if(!con)return;const list=filtered.length||searchQuery||currentFilter!=='all'?filtered:releases;if(!list.length){con.innerHTML='<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">&#127902;</div><div class="empty-title">No records found</div><div class="empty-sub">Try a different search or filter.</div></div>';return;}if(viewMode==='grid'){con.innerHTML=list.map((r,i)=>{const bi=r.basic_information;const art=bi.cover_image||bi.thumb||'';return`<div class="record-card" onclick="openDetail(${i})">${artImg(art,'record-art',discPlaceholder)}<div class="record-info"><div class="record-title-text">${escHtml(bi.title)}</div><div class="record-artist">${escHtml(bi.artists[0]?.name||'Unknown')}</div><div class="record-year">${bi.year||''}</div></div></div>`;}).join('');}else{con.innerHTML=list.map((r,i)=>{const bi=r.basic_information;const art=bi.cover_image||bi.thumb||'';const format=bi.formats?.[0]?.name||'';const genre=bi.genres?.[0]||'';return`<div class="record-list-item" onclick="openDetail(${i})">${artImg(art,'list-art',discPlaceholderSm)}<div class="list-info"><div class="list-title">${escHtml(bi.title)}</div><div class="list-artist">${escHtml(bi.artists[0]?.name||'Unknown')}</div><div class="list-meta">${format?`<span class="meta-tag">${escHtml(format)}</span>`:''}${genre?`<span class="meta-tag">${escHtml(genre)}</span>`:''}${bi.year?`<span class="meta-tag">${bi.year}</span>`:''}</div></div><span class="list-chevron">&#8250;</span></div>`;}).join('');}}
+function setView(v){viewMode=v;const con=document.getElementById('collection-container');if(con){con.className='collection '+(v==='grid'?'grid-view':'list-view');}document.querySelectorAll('.view-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&v==='grid')||(i===1&&v==='list')));renderCollection();}
+async function openDetail(idx){const list=filtered.length||searchQuery||currentFilter!=='all'?filtered:releases;currentRecord=list[idx];const bi=currentRecord.basic_information;const art=bi.cover_image||bi.thumb||'';const overlay=document.getElementById('detail-overlay');document.getElementById('detail-content').innerHTML=`<div style="position:relative;"><div class="detail-back"><button class="detail-back-btn" onclick="closeDetail()">&#8592;</button></div>${art&&art!=='https://st.discogs.com/'?`<img class="detail-hero" src="${art}" alt="${escHtml(bi.title)}">`:`<div class="detail-hero-placeholder"><div class="detail-hero-disc"><div class="detail-hero-hole"></div></div></div>`}</div><div class="detail-body"><h1 class="detail-title">${escHtml(bi.title)}</h1><p class="detail-artist">${escHtml(bi.artists?.map(a=>a.name).join(', ')||'Unknown Artist')}</p><div class="detail-grid"><div class="detail-chip"><div class="detail-chip-label">Year</div><div class="detail-chip-val">${bi.year||'—'}</div></div><div class="detail-chip"><div class="detail-chip-label">Format</div><div class="detail-chip-val">${bi.formats?.[0]?.name||'—'}</div></div><div class="detail-chip"><div class="detail-chip-label">Label</div><div class="detail-chip-val">${bi.labels?.[0]?.name||'—'}</div></div><div class="detail-chip"><div class="detail-chip-label">Genre</div><div class="detail-chip-val">${bi.genres?.[0]||'—'}</div></div>${bi.styles?.[0]?`<div class="detail-chip"><div class="detail-chip-label">Style</div><div class="detail-chip-val">${bi.styles[0]}</div></div>`:''}${bi.formats?.[0]?.descriptions?.length?`<div class="detail-chip"><div class="detail-chip-label">Pressing</div><div class="detail-chip-val">${bi.formats[0].descriptions.join(', ')}</div></div>`:''}</div><div id="detail-extra" style="margin-top:8px;"><div style="display:flex;align-items:center;gap:10px;padding:20px 0;color:var(--subtext);font-size:13px;"><div style="width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>Loading full details...</div></div><button class="ai-chat-btn" onclick="startAiChat()">&#10024; Chat about this record</button><a href="https://www.discogs.com/release/${currentRecord.id}" target="_blank" style="display:block;text-align:center;font-size:12px;color:var(--subtext);text-decoration:none;padding:16px 12px;">View on Discogs &#8599;</a></div>`;overlay.classList.add('open');try{const data=await apiGet('/api/release/'+currentRecord.id);renderDetailExtra(data);}catch(e){document.getElementById('detail-extra').innerHTML='';}}
+function renderDetailExtra(d){const el=document.getElementById('detail-extra');if(!el)return;let html='';if(d.images&&d.images.length>1){html+=`<div class="detail-section-title">Artwork</div><div style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;margin-bottom:16px;">${d.images.slice(0,8).map(img=>`<img src="${img.uri150||img.uri}" alt="Artwork" style="width:80px;height:80px;object-fit:cover;border-radius:var(--radius);flex-shrink:0;border:var(--border-w) solid var(--border);cursor:pointer;" onclick="this.style.width=this.style.width==='80px'?'100%':'80px';this.style.height=this.style.height==='80px'?'auto':'80px';">`).join('')}</div>`;}if(d.tracklist&&d.tracklist.length){html+=`<div class="detail-section-title">Tracklist</div>`;let sideLabel='';d.tracklist.forEach(t=>{if(t.type_==='heading'){html+=`<div style="font-size:10px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;padding:10px 0 4px;">${escHtml(t.title)}</div>`;return;}const pos=t.position||'';const newSide=pos.match(/^[A-Z]/)?.[0];if(newSide&&newSide!==sideLabel){sideLabel=newSide;html+=`<div style="font-size:10px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;padding:10px 0 4px;">Side ${sideLabel}</div>`;}html+=`<div class="tracklist-item"><span class="track-num">${escHtml(pos)}</span><span class="track-title">${escHtml(t.title)}${t.extraartists?.length?`<span style="display:block;font-size:10px;color:var(--subtext);">${t.extraartists.map(a=>a.role+': '+a.name).join(', ')}</span>`:''}</span><span class="track-dur">${escHtml(t.duration||'')}</span></div>`;});html+=`<div style="height:8px;"></div>`;}if(d.extraartists&&d.extraartists.length){html+=`<div class="detail-section-title">Credits</div><div style="margin-bottom:16px;">${d.extraartists.slice(0,20).map(a=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:var(--border-w) solid var(--border);font-size:12px;"><span style="color:var(--subtext);">${escHtml(a.role||'')}</span><span style="color:var(--text);">${escHtml(a.name||'')}</span></div>`).join('')}</div>`;}if(d.notes){html+=`<div class="detail-section-title">Notes</div><div style="font-size:12px;color:var(--subtext);line-height:1.7;margin-bottom:16px;white-space:pre-wrap;">${escHtml(d.notes.substring(0,600))}${d.notes.length>600?'…':''}</div>`;}const extras=[];if(d.country)extras.push(['Country',d.country]);if(d.released)extras.push(['Released',d.released]);if(d.labels?.[0]?.catno)extras.push(['Catalog #',d.labels[0].catno]);if(d.series?.length)extras.push(['Series',d.series.map(s=>s.name).join(', ')]);if(extras.length){html+=`<div class="detail-section-title">Pressing info</div><div style="margin-bottom:20px;">${extras.map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:var(--border-w) solid var(--border);font-size:12px;"><span style="color:var(--subtext);">${escHtml(k)}</span><span style="color:var(--text);text-align:right;max-width:60%;">${escHtml(String(v))}</span></div>`).join('')}</div>`;}el.innerHTML=html||'';}
+function closeDetail(){document.getElementById('detail-overlay').classList.remove('open');}
+function openRandom(){if(!releases.length)return;randomRecord=releases[Math.floor(Math.random()*releases.length)];renderRandomCard(randomRecord);document.getElementById('random-overlay').classList.add('open');}
+function pickRandom(){randomRecord=releases[Math.floor(Math.random()*releases.length)];renderRandomCard(randomRecord);}
+function renderRandomCard(r){const bi=r.basic_information;const art=bi.cover_image||bi.thumb||'';document.getElementById('random-card').innerHTML=`${art&&art!=='https://st.discogs.com/'?`<img class="random-art" src="${art}" alt="${escHtml(bi.title)}">`:`<div class="random-art-placeholder"><div style="width:80px;height:80px;border-radius:50%;background:var(--disc);border:3px solid var(--border);display:flex;align-items:center;justify-content:center;"><div style="width:14px;height:14px;border-radius:50%;background:var(--artbg);"></div></div></div>`}<div class="random-info"><div class="random-title">${escHtml(bi.title)}</div><div class="random-artist">${escHtml(bi.artists[0]?.name||'Unknown')}</div><div style="display:flex;gap:6px;flex-wrap:wrap;">${bi.year?`<span class="meta-tag">${bi.year}</span>`:''}${bi.formats?.[0]?.name?`<span class="meta-tag">${bi.formats[0].name}</span>`:''}${bi.genres?.[0]?`<span class="meta-tag">${bi.genres[0]}</span>`:''}</div></div>`;}
+function openRandomDetail(){closeRandom();if(randomRecord){const idx=releases.indexOf(randomRecord);if(idx>-1)openDetail(idx);}}
+function closeRandom(){document.getElementById('random-overlay').classList.remove('open');}
+function startAiChat(){if(!currentRecord)return;const bi=currentRecord.basic_information;alert(`AI Chat coming in Phase 4!\n\nWill open a chat about:\n"${bi.title}" by ${bi.artists[0]?.name||'Unknown'} (${bi.year||'?'})`);}
+function openSettings(){buildPresetPills();syncControlsToTheme(currentTheme);const unEl=document.getElementById('settings-username');if(unEl&&USERNAME)unEl.textContent=USERNAME;document.getElementById('settings-panel').classList.add('open');document.getElementById('settings-body').scrollTop=0;}
+function closeSettings(){document.getElementById('settings-panel').classList.remove('open');}
+function reconnect(){if(confirm('Log out and reconnect Discogs account?')){const sk=localStorage.getItem('wax_sk')||'';localStorage.removeItem('wax_sk');localStorage.removeItem('wax_user');fetch('/auth/logout?sk='+sk).then(()=>{window.location.href='/auth/login';});}}
+function showLogin(errorMsg){document.getElementById('app-content').innerHTML=`<div class="setup-screen"><div class="setup-disc"><div class="disc-hole-lg"></div></div><div class="setup-title">Welcome to Wax</div><div class="setup-sub">Connect your Discogs collection to get started.</div>${errorMsg?`<p style="font-size:12px;color:#e05050;background:rgba(224,80,80,0.1);border-radius:8px;padding:10px 14px;width:100%;text-align:center;">${errorMsg}</p>`:''}<button class="token-btn" onclick="window.location.href='/auth/login'">Connect with Discogs</button><p style="font-size:11px;color:var(--subtext);line-height:1.6;">You'll be redirected to Discogs to authorize, then brought back automatically.</p></div>`;}
+function showLoading(msg){document.getElementById('app-content').innerHTML=`<div class="loading-state"><div class="spinner"></div><div class="loading-text" style="text-align:center;line-height:1.8;">${msg}</div></div>`;}
+async function init(){const params=new URLSearchParams(window.location.search);const sk=params.get('sk');const user=params.get('user');const authError=params.get('error');if(sk){localStorage.setItem('wax_sk',sk);if(user)localStorage.setItem('wax_user',decodeURIComponent(user));}if(sk||params.get('auth')||authError)window.history.replaceState({},'','/');if(authError){showLogin('Authorization failed. Please try again.');return;}showLoading('Loading Wax…');try{const status=await apiGet('/auth/status');if(!status.authenticated){localStorage.removeItem('wax_sk');showLogin();return;}USERNAME=status.username;showLoading(`Loading your collection, ${USERNAME}…<br><span style="font-size:11px;opacity:0.6;">Fetching all your records from Discogs</span>`);const data=await apiGet('/api/collection');releases=data.releases||[];filtered=[...releases];applyTheme(currentTheme);renderApp();}catch(e){if(e.message==='not_authenticated'){localStorage.removeItem('wax_sk');showLogin();}else{showLogin('Something went wrong. Please try again.');}}}
 applyTheme(currentTheme);
 init();
 </script>
