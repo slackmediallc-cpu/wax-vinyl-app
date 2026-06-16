@@ -833,7 +833,7 @@ let pickerStyle = localStorage.getItem('wax_picker') || 'crate';
 function openRandom() {
   if (!releases.length) return;
   document.getElementById('random-overlay').classList.add('open');
-  runPicker(pickerStyle);
+  showPickerStyleMenu();
 }
 
 function closeRandom() {
@@ -867,7 +867,6 @@ function showPickerStyleMenu() {
     {id:'wheel', icon:'🎡', name:'The Wheel'},
     {id:'slot', icon:'🎰', name:'Slot Machine'},
     {id:'oracle', icon:'🔮', name:'The Oracle'},
-    {id:'shuffle', icon:'🃏', name:'Card Shuffle'},
     {id:'vibe', icon:'✨', name:'Vibe Picker'},
   ];
   c.innerHTML = `
@@ -894,45 +893,64 @@ function runPicker(style) {
   else if (style === 'wheel') runWheel(c);
   else if (style === 'slot') runSlotMachine(c);
   else if (style === 'oracle') runOracle(c);
-  else if (style === 'shuffle') runShuffle(c);
   else if (style === 'vibe') runVibePicker(c);
 }
 
 function runCrateDig(c) {
-  const pool = [...releases].sort(() => Math.random()-0.5).slice(0,20);
-  const finalIdx = Math.floor(Math.random() * pool.length);
+  // 45 records, winner placed in last third so there's a good run-up
+  const pool = [...releases].sort(() => Math.random()-0.5).slice(0,45);
+  const finalIdx = 30 + Math.floor(Math.random() * 10); // land between index 30-39
   pool[finalIdx] = randomRecord;
   const W = Math.min(window.innerWidth, 430);
+  const ITEM_W = 160; const GAP = 8; const STEP = ITEM_W + GAP;
   c.innerHTML = `
     <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;">Digging the crates...</p>
-    <div style="width:${W}px;overflow:hidden;position:relative;height:200px;display:flex;align-items:center;">
-      <div id="crate-strip" style="display:flex;gap:10px;position:absolute;left:0;">
+    <div style="width:${W}px;overflow:hidden;position:relative;height:170px;display:flex;align-items:center;">
+      <div id="crate-strip" style="display:flex;gap:${GAP}px;position:absolute;left:0;">
         ${pool.map((r,i) => { const art = r.basic_information.cover_image||r.basic_information.thumb||'';
-          return '<div id="ci'+i+'" style="width:180px;height:180px;border-radius:10px;overflow:hidden;flex-shrink:0;border:2px solid transparent;transition:border-color 0.3s;">'+(art&&art!='https://st.discogs.com/'?'<img src="'+art+'" style="width:100%;height:100%;object-fit:cover;">':"<div style='width:100%;height:100%;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:40px;'>🎵</div>")+'</div>';
+          return '<div id="ci'+i+'" style="width:'+ITEM_W+'px;height:160px;border-radius:10px;overflow:hidden;flex-shrink:0;border:2px solid transparent;transition:border-color 0.2s;">'+(art&&art!='https://st.discogs.com/'?'<img src="'+art+'" style="width:100%;height:100%;object-fit:cover;">':"<div style='width:100%;height:100%;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:36px;'>🎵</div>")+'</div>';
         }).join('')}
       </div>
     </div>
-    <div id="crate-result" style="opacity:0;transition:opacity 0.5s;text-align:center;"></div>`;
+    <div id="crate-result" style="opacity:0;transition:opacity 0.4s;text-align:center;"></div>`;
   const strip = document.getElementById('crate-strip');
-  const center = W/2 - 90;
-  let pos = 0, speed = 30, done = false;
+  const center = W/2 - ITEM_W/2;
+  const target = finalIdx * STEP;
+  let pos = 0;
+  // Phase 1: ramp up to full speed quickly
+  // Phase 2: cruise at high speed
+  // Phase 3: fast deceleration to target
+  let phase = 1;
+  let speed = 8;
+  const MAX_SPEED = 55;
+  const CRUISE_UNTIL = target - 600; // start slowing 600px before target
+
   function tick() {
-    if (done) return;
-    speed = Math.max(1.5, speed * 0.972);
-    pos += speed;
-    const target = finalIdx * 190;
-    if (speed < 2.5 && Math.abs(pos - target) < speed + 2) {
-      pos = target; done = true;
-      strip.style.transform = 'translateX('+(center-pos)+'px)';
-      const item = document.getElementById('ci'+finalIdx);
-      if (item) item.style.borderColor = 'var(--accent)';
-      setTimeout(() => {
-        const bi = randomRecord.basic_information;
-        document.getElementById('crate-result').style.opacity='1';
-        document.getElementById('crate-result').innerHTML='<p style="font-size:16px;font-weight:700;color:var(--text);margin:8px 0 2px;">'+escHtml(bi.title)+'</p><p style="font-size:13px;color:var(--accent);margin:0 0 8px;">'+escHtml(bi.artists[0]?.name||'')+'</p>'+pickerActions();
-      }, 400); return;
+    if (phase === 1) {
+      speed = Math.min(speed * 1.15, MAX_SPEED);
+      if (speed >= MAX_SPEED) phase = 2;
     }
-    if (pos > pool.length * 190) pos = 0;
+    if (phase === 2) {
+      if (pos >= CRUISE_UNTIL) phase = 3;
+    }
+    if (phase === 3) {
+      // Quick ease into target
+      const remaining = target - pos;
+      speed = Math.max(3, remaining * 0.12);
+      if (remaining <= 3) {
+        pos = target;
+        strip.style.transform = 'translateX('+(center-pos)+'px)';
+        const item = document.getElementById('ci'+finalIdx);
+        if (item) item.style.borderColor = 'var(--accent)';
+        setTimeout(() => {
+          const bi = randomRecord.basic_information;
+          document.getElementById('crate-result').style.opacity='1';
+          document.getElementById('crate-result').innerHTML='<p style="font-size:16px;font-weight:700;color:var(--text);margin:8px 0 2px;">'+escHtml(bi.title)+'</p><p style="font-size:13px;color:var(--accent);margin:0 0 8px;">'+escHtml(bi.artists[0]?.name||'')+'</p>'+pickerActions();
+        }, 300);
+        return;
+      }
+    }
+    pos += speed;
     strip.style.transform = 'translateX('+(center-pos)+'px)';
     requestAnimationFrame(tick);
   }
@@ -940,7 +958,13 @@ function runCrateDig(c) {
 }
 
 function runWheel(c) {
-  const pool = releases.slice(0, Math.min(12, releases.length));
+  // Random sample so wheel shows varied records, not just first alphabetically
+  const poolSize = Math.min(12, releases.length);
+  const shuffled = [...releases].sort(() => Math.random()-0.5);
+  const pool = shuffled.slice(0, poolSize);
+  // Make sure randomRecord is in the pool
+  const existingIdx = pool.findIndex(r => r === randomRecord);
+  if (existingIdx === -1) pool[Math.floor(Math.random()*poolSize)] = randomRecord;
   const size = 280, cx=size/2, cy=size/2, r=120;
   const n=pool.length, sa=(2*Math.PI)/n;
   const colors=['#c47f1a','#1a6cc4','#3a8a4a','#a03050','#c040e0','#7a5830','#1a8888','#884a1a','#888','#aa5500','#005588','#558800'];
@@ -993,74 +1017,344 @@ function runSlotMachine(c) {
   const artists = releases.map(r=>r.basic_information.artists[0]?.name||'?');
   const albums = releases.map(r=>r.basic_information.title||'?');
   const years = releases.map(r=>String(r.basic_information.year||'?'));
-  c.innerHTML=`<p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">🎰 Rolling...</p>
-    <div style="display:flex;gap:6px;background:var(--card);border:var(--border-w) solid var(--border);border-radius:12px;padding:10px;">
-      ${[['slot-a','Artist',100,artists,bi.artists[0]?.name||'?'],['slot-b','Album',120,albums,bi.title],['slot-c','Year',56,years,String(bi.year||'?')]].map(([id,label,w,pool,final])=>`
-        <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
-          <span style="font-size:9px;color:var(--subtext);text-transform:uppercase;letter-spacing:0.06em;">${label}</span>
-          <div style="width:${w}px;height:38px;overflow:hidden;border-radius:6px;background:rgba(0,0,0,0.3);">
-            <div id="${id}" style="display:flex;flex-direction:column;"></div>
+  let leverPulled = false;
+
+  c.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:0;width:100%;max-width:340px;">
+      <!-- Machine top with lights -->
+      <div style="width:300px;background:linear-gradient(180deg,#2a1a00,#1a1005);border:3px solid #c47f1a;border-bottom:none;border-radius:16px 16px 0 0;padding:10px 10px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <!-- Marquee lights -->
+        <div style="display:flex;gap:6px;margin-bottom:2px;">
+          ${Array(10).fill(0).map((_,i)=>`<div class="slot-light" style="width:10px;height:10px;border-radius:50%;background:${['#c47f1a','#e05050','#50a0e0','#50e050'][i%4]};box-shadow:0 0 6px ${['#c47f1a','#e05050','#50a0e0','#50e050'][i%4]};animation:blink ${0.4+i*0.13}s infinite alternate;"></div>`).join('')}
+        </div>
+        <div style="font-size:14px;font-weight:800;color:#c47f1a;letter-spacing:0.12em;text-shadow:0 0 10px #c47f1a;">WAX SLOTS</div>
+      </div>
+
+      <!-- Reels section -->
+      <div style="width:300px;background:#111;border-left:3px solid #c47f1a;border-right:3px solid #c47f1a;padding:12px 10px;display:flex;flex-direction:row;gap:0;align-items:stretch;">
+        <!-- Left side panel -->
+        <div style="width:24px;background:linear-gradient(180deg,#3a2000,#1a1000);border-radius:8px 0 0 8px;border:1px solid #5a3a00;margin-right:8px;"></div>
+
+        <!-- Reels -->
+        <div style="flex:1;display:flex;gap:6px;justify-content:center;">
+          ${[['slot-a','Artist',artists,bi.artists[0]?.name||'?'],['slot-b','Album',albums,bi.title],['slot-c','Year',years,String(bi.year||'?')]].map(([id,label,pool,final])=>`
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+              <span style="font-size:8px;color:#7a5a20;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">${label}</span>
+              <div style="position:relative;width:82px;">
+                <!-- Reel window -->
+                <div style="width:82px;height:72px;overflow:hidden;border-radius:6px;border:2px solid #5a3a10;background:#0a0804;box-shadow:inset 0 0 12px rgba(0,0,0,0.8);">
+                  <div id="${id}" style="display:flex;flex-direction:column;"></div>
+                </div>
+                <!-- Shine overlay -->
+                <div style="position:absolute;inset:0;border-radius:6px;background:linear-gradient(90deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.01) 40%,rgba(255,255,255,0.06) 100%);pointer-events:none;"></div>
+                <!-- Center line -->
+                <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(196,127,26,0.4);transform:translateY(-50%);pointer-events:none;"></div>
+              </div>
+            </div>`).join('')}
+        </div>
+
+        <!-- Right side panel with lever -->
+        <div style="width:32px;background:linear-gradient(180deg,#3a2000,#1a1000);border-radius:0 8px 8px 0;border:1px solid #5a3a00;margin-left:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;">
+          <!-- Lever -->
+          <div id="slot-lever" onclick="pullLever()" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0;transition:transform 0.3s;" title="Pull lever">
+            <div style="width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#e05050,#a03030);border:2px solid #c04040;box-shadow:0 0 8px rgba(224,80,80,0.6);"></div>
+            <div style="width:5px;height:50px;background:linear-gradient(180deg,#888,#555);border-radius:3px;"></div>
+            <div style="width:12px;height:8px;background:linear-gradient(180deg,#666,#333);border-radius:0 0 4px 4px;"></div>
           </div>
-        </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Machine bottom -->
+      <div style="width:300px;background:linear-gradient(180deg,#1a1005,#2a1a00);border:3px solid #c47f1a;border-top:none;border-radius:0 0 16px 16px;padding:8px 10px 12px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <div id="slot-status" style="font-size:10px;color:#7a5a20;letter-spacing:0.08em;">PULL LEVER TO SPIN</div>
+        <div id="slot-result" style="opacity:0;transition:opacity 0.5s;text-align:center;width:100%;"></div>
+      </div>
     </div>
-    <div id="slot-result" style="opacity:0;transition:opacity 0.5s;text-align:center;margin-top:8px;"></div>`;
+  `;
+
+  // Add blink animation
+  if (!document.getElementById('slot-style')) {
+    const s = document.createElement('style');
+    s.id = 'slot-style';
+    s.textContent = '@keyframes blink{0%{opacity:1;}100%{opacity:0.3;}} @keyframes leverPull{0%{transform:translateY(0);}40%{transform:translateY(24px);}100%{transform:translateY(0);}}';
+    document.head.appendChild(s);
+  }
+
+  // Build reel contents
   [[0,'slot-a',artists,bi.artists[0]?.name||'?'],[1,'slot-b',albums,bi.title],[2,'slot-c',years,String(bi.year||'?')]].forEach(([delay,id,pool,final])=>{
     const el=document.getElementById(id); if(!el)return;
-    const items=[...[...pool].sort(()=>Math.random()-0.5).slice(0,25),final];
-    el.innerHTML=items.map(v=>'<div style="height:38px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:var(--text);padding:0 4px;text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%;">'+escHtml(String(v).substring(0,14))+'</div>').join('');
-    setTimeout(()=>{el.style.transition='transform '+(2+delay*0.4)+'s cubic-bezier(0.17,0.67,0.21,0.99)';el.style.transform='translateY(-'+(items.length-1)*38+'px)';},delay*150);
+    const items=[...[...pool].sort(()=>Math.random()-0.5).slice(0,30),final];
+    el.innerHTML=items.map(v=>'<div style="height:72px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#c47f1a;padding:0 4px;text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:82px;">'+escHtml(String(v).substring(0,12))+'</div>').join('');
   });
-  setTimeout(()=>{
-    const art=bi.cover_image||bi.thumb||'';
-    document.getElementById('slot-result').style.opacity='1';
-    document.getElementById('slot-result').innerHTML=(art&&art!='https://st.discogs.com/'?'<img src="'+art+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;margin-bottom:8px;">':'')+'<p style="font-size:16px;font-weight:700;color:var(--text);margin:4px 0 2px;">'+escHtml(bi.title)+'</p><p style="font-size:13px;color:var(--accent);margin:0 0 8px;">'+escHtml(bi.artists[0]?.name||'')+'</p>'+pickerActions();
-  },3200);
+
+  window.pullLever = function() {
+    if (leverPulled) return;
+    leverPulled = true;
+    const lever = document.getElementById('slot-lever');
+    if (lever) lever.style.animation = 'leverPull 0.5s ease-in-out forwards';
+    document.getElementById('slot-status').textContent = 'SPINNING...';
+
+    [[0,'slot-a',artists,bi.artists[0]?.name||'?'],[1,'slot-b',albums,bi.title],[2,'slot-c',years,String(bi.year||'?')]].forEach(([delay,id,pool,final])=>{
+      const el=document.getElementById(id); if(!el)return;
+      const items = el.querySelectorAll('div').length;
+      setTimeout(()=>{
+        el.style.transition='transform '+(1.8+delay*0.5)+'s cubic-bezier(0.17,0.67,0.21,0.99)';
+        el.style.transform='translateY(-'+((items-1)*72)+'px)';
+      }, delay*180 + 200);
+    });
+
+    setTimeout(()=>{
+      document.getElementById('slot-status').textContent = '🎰 WINNER!';
+      const art=bi.cover_image||bi.thumb||'';
+      const resultEl = document.getElementById('slot-result');
+      if (resultEl) {
+        resultEl.style.opacity='1';
+        resultEl.innerHTML=(art&&art!='https://st.discogs.com/'?'<img src="'+art+'" style="width:60px;height:60px;object-fit:cover;border-radius:6px;margin-bottom:6px;border:2px solid #c47f1a;">':'')
+          +'<p style="font-size:14px;font-weight:700;color:var(--text);margin:2px 0;">'+escHtml(bi.title)+'</p>'
+          +'<p style="font-size:11px;color:var(--accent);margin:0 0 8px;">'+escHtml(bi.artists[0]?.name||'')+'</p>'
+          +pickerActions();
+      }
+    }, 3800);
+  };
 }
 
 function runOracle(c) {
-  const bi=randomRecord.basic_information;
-  const art=bi.cover_image||bi.thumb||'';
-  c.innerHTML=`<div style="text-align:center;">
-    <p style="font-size:11px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:20px;">The Oracle Speaks</p>
-    <div style="width:130px;height:130px;border-radius:50%;background:var(--disc);border:3px solid var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 0 40px rgba(196,127,26,0.4);animation:pulse 2s ease-in-out infinite;">
-      <div style="width:20px;height:20px;border-radius:50%;background:var(--bg);"></div>
+  const bi = randomRecord.basic_information;
+  const art = bi.cover_image || bi.thumb || '';
+
+  c.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;width:100%;max-width:340px;">
+      <!-- Oracle scene SVG -->
+      <svg viewBox="0 0 320 280" width="320" height="280" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+        <defs>
+          <radialGradient id="bgGrad" cx="50%" cy="60%" r="60%">
+            <stop offset="0%" stop-color="#1a0a2e"/>
+            <stop offset="100%" stop-color="#050208"/>
+          </radialGradient>
+          <radialGradient id="ballGrad" cx="38%" cy="35%" r="60%">
+            <stop offset="0%" stop-color="#c8e8ff" stop-opacity="0.9"/>
+            <stop offset="40%" stop-color="#6090d0" stop-opacity="0.7"/>
+            <stop offset="100%" stop-color="#0a1a3a" stop-opacity="0.95"/>
+          </radialGradient>
+          <radialGradient id="ballGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#4080ff" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#4080ff" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="smokeGrad" cx="50%" cy="100%" r="60%">
+            <stop offset="0%" stop-color="#8080ff" stop-opacity="0.4"/>
+            <stop offset="100%" stop-color="#8080ff" stop-opacity="0"/>
+          </radialGradient>
+          <clipPath id="ballClip">
+            <circle cx="160" cy="148" r="54"/>
+          </clipPath>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="softGlow">
+            <feGaussianBlur stdDeviation="6" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <!-- Background -->
+        <rect width="320" height="280" fill="url(#bgGrad)"/>
+
+        <!-- Stars -->
+        ${Array(18).fill(0).map((_,i)=>{
+          const x=10+Math.sin(i*2.3)*140+150, y=10+Math.cos(i*1.7)*80+40, r=i%3===0?1.5:0.8;
+          return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="white" opacity="${0.3+Math.random()*0.5}"/>`;
+        }).join('')}
+
+        <!-- Curtains -->
+        <path d="M0,0 Q30,50 10,280 L0,280 Z" fill="#1a0a30" opacity="0.8"/>
+        <path d="M320,0 Q290,50 310,280 L320,280 Z" fill="#1a0a30" opacity="0.8"/>
+        <path d="M0,0 Q40,30 20,100 Q10,160 30,280 L0,280 Z" fill="#2a1040" opacity="0.6"/>
+        <path d="M320,0 Q280,30 300,100 Q310,160 290,280 L320,280 Z" fill="#2a1040" opacity="0.6"/>
+
+        <!-- Table -->
+        <ellipse cx="160" cy="228" rx="110" ry="22" fill="#1a0a20" stroke="#3a1a50" stroke-width="1"/>
+        <rect x="50" y="222" width="220" height="10" rx="4" fill="#120818"/>
+        <!-- Table cloth drape -->
+        <path d="M50,228 Q90,240 160,242 Q230,240 270,228 L270,234 Q230,246 160,248 Q90,246 50,234 Z" fill="#1e0e2e" opacity="0.8"/>
+
+        <!-- Crystal ball base/stand -->
+        <ellipse cx="160" cy="206" rx="38" ry="10" fill="#2a1540" stroke="#5a2a80" stroke-width="1.5"/>
+        <path d="M130,206 Q130,214 138,218 L182,218 Q190,214 190,206 Z" fill="#1a0a2e" stroke="#4a1a60" stroke-width="1"/>
+        <!-- Stand gems -->
+        <circle cx="148" cy="212" r="3" fill="#c040e0" opacity="0.8"/>
+        <circle cx="160" cy="215" r="3" fill="#8040ff" opacity="0.8"/>
+        <circle cx="172" cy="212" r="3" fill="#c040e0" opacity="0.8"/>
+
+        <!-- Crystal ball glow aura -->
+        <circle cx="160" cy="148" r="72" fill="url(#ballGlow)" opacity="0.6"/>
+        <circle cx="160" cy="148" r="80" fill="none" stroke="#4060ff" stroke-width="0.5" opacity="0.3"/>
+
+        <!-- Crystal ball -->
+        <circle cx="160" cy="148" r="58" fill="url(#ballGrad)" stroke="#a0c0ff" stroke-width="1.5" opacity="0.95"/>
+
+        <!-- Album art inside ball (revealed later) -->
+        <g id="oracle-art-group" opacity="0" clip-path="url(#ballClip)">
+          <image id="oracle-art-img" x="106" y="94" width="108" height="108" preserveAspectRatio="xMidYMid slice"/>
+          <!-- Art overlay tint -->
+          <circle cx="160" cy="148" r="54" fill="#0a1a3a" opacity="0.25"/>
+        </g>
+
+        <!-- Smoke wisps inside ball -->
+        <g clip-path="url(#ballClip)" opacity="0.6">
+          <ellipse cx="145" cy="170" rx="30" ry="12" fill="#6080ff" opacity="0.2">
+            <animate attributeName="cy" values="170;160;170" dur="3s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.2;0.4;0.2" dur="3s" repeatCount="indefinite"/>
+          </ellipse>
+          <ellipse cx="175" cy="155" rx="22" ry="8" fill="#8060ff" opacity="0.15">
+            <animate attributeName="cy" values="155;145;155" dur="2.5s" repeatCount="indefinite"/>
+          </ellipse>
+          <ellipse cx="155" cy="140" rx="18" ry="6" fill="#a080ff" opacity="0.1">
+            <animate attributeName="cy" values="140;130;140" dur="2s" repeatCount="indefinite"/>
+          </ellipse>
+        </g>
+
+        <!-- Ball shine -->
+        <ellipse cx="143" cy="120" rx="18" ry="10" fill="white" opacity="0.12" transform="rotate(-30,143,120)"/>
+        <ellipse cx="139" cy="116" rx="8" ry="5" fill="white" opacity="0.2" transform="rotate(-30,139,116)"/>
+
+        <!-- Ball bottom smoke rising -->
+        <g id="oracle-smoke">
+          <ellipse cx="150" cy="205" rx="16" ry="6" fill="#8060c0" opacity="0.0">
+            <animate attributeName="cy" values="205;185;165" dur="2.5s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.3;0.15;0" dur="2.5s" repeatCount="indefinite"/>
+            <animate attributeName="rx" values="16;22;28" dur="2.5s" repeatCount="indefinite"/>
+          </ellipse>
+          <ellipse cx="170" cy="205" rx="12" ry="5" fill="#6040a0" opacity="0.0">
+            <animate attributeName="cy" values="205;180;158" dur="2s" begin="0.8s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.25;0.1;0" dur="2s" begin="0.8s" repeatCount="indefinite"/>
+            <animate attributeName="rx" values="12;18;24" dur="2s" begin="0.8s" repeatCount="indefinite"/>
+          </ellipse>
+        </g>
+
+        <!-- Oracle woman body -->
+        <!-- Robe/dress -->
+        <path d="M108,272 Q118,240 124,220 Q128,205 132,190 Q138,178 148,172 Q155,168 160,168 Q165,168 172,172 Q182,178 188,190 Q192,205 196,220 Q202,240 212,272 Z" fill="#1e0840" stroke="#3a1060" stroke-width="1"/>
+        <!-- Robe sheen -->
+        <path d="M125,222 Q130,200 136,184 Q142,175 150,171" fill="none" stroke="#4a20a0" stroke-width="1" opacity="0.5"/>
+        <!-- Robe bottom details -->
+        <path d="M108,272 Q130,260 160,258 Q190,260 212,272" fill="#160630" stroke="#2a0840" stroke-width="0.5"/>
+
+        <!-- Arms -->
+        <path d="M148,172 Q130,178 118,192 Q112,200 114,210" stroke="#c8956a" stroke-width="8" stroke-linecap="round" fill="none"/>
+        <path d="M172,172 Q190,178 202,192 Q208,200 206,210" stroke="#c8956a" stroke-width="8" stroke-linecap="round" fill="none"/>
+        <!-- Sleeves -->
+        <path d="M148,172 Q130,178 118,192 Q112,200 114,210" stroke="#2a0e60" stroke-width="12" stroke-linecap="round" fill="none" opacity="0.7"/>
+        <path d="M172,172 Q190,178 202,192 Q208,200 206,210" stroke="#2a0e60" stroke-width="12" stroke-linecap="round" fill="none" opacity="0.7"/>
+
+        <!-- Hands near ball -->
+        <ellipse cx="118" cy="213" rx="10" ry="7" fill="#c8956a" transform="rotate(-20,118,213)"/>
+        <ellipse cx="202" cy="213" rx="10" ry="7" fill="#c8956a" transform="rotate(20,202,213)"/>
+
+        <!-- Neck -->
+        <rect x="155" y="130" width="10" height="18" rx="5" fill="#c8956a"/>
+
+        <!-- Head -->
+        <ellipse cx="160" cy="118" rx="22" ry="26" fill="#c8956a"/>
+
+        <!-- Hair -->
+        <path d="M138,108 Q136,90 140,78 Q148,62 160,60 Q172,62 180,78 Q184,90 182,108 Q176,98 172,92 Q166,80 160,78 Q154,80 148,92 Q144,98 138,108 Z" fill="#1a0808"/>
+        <!-- Hair sides flowing down -->
+        <path d="M138,108 Q128,120 126,140 Q124,158 128,172 Q136,178 140,172 Q138,158 140,140 Q142,122 148,112 Z" fill="#1a0808"/>
+        <path d="M182,108 Q192,120 194,140 Q196,158 192,172 Q184,178 180,172 Q182,158 180,140 Q178,122 172,112 Z" fill="#1a0808"/>
+        <!-- Hair highlight -->
+        <path d="M150,68 Q158,64 166,68" stroke="#3a1818" stroke-width="2" fill="none" opacity="0.6"/>
+
+        <!-- Face features -->
+        <!-- Eyes -->
+        <ellipse cx="153" cy="116" rx="4" ry="4.5" fill="#0a0418"/>
+        <ellipse cx="167" cy="116" rx="4" ry="4.5" fill="#0a0418"/>
+        <circle cx="154.5" cy="115" r="1.2" fill="white" opacity="0.6"/>
+        <circle cx="168.5" cy="115" r="1.2" fill="white" opacity="0.6"/>
+        <!-- Eye glow (oracle magic) -->
+        <ellipse cx="153" cy="116" rx="5" ry="5.5" fill="#8040ff" opacity="0.15"/>
+        <ellipse cx="167" cy="116" rx="5" ry="5.5" fill="#8040ff" opacity="0.15"/>
+        <!-- Eyebrows -->
+        <path d="M149,110 Q153,107 157,109" stroke="#1a0808" stroke-width="1.5" fill="none"/>
+        <path d="M163,109 Q167,107 171,110" stroke="#1a0808" stroke-width="1.5" fill="none"/>
+        <!-- Nose -->
+        <path d="M159,120 Q157,126 158,128 Q160,130 162,128 Q163,126 161,120" fill="#b87858" opacity="0.5"/>
+        <!-- Lips -->
+        <path d="M155,132 Q160,135 165,132" stroke="#a04040" stroke-width="1.5" fill="none"/>
+        <path d="M156,132 Q160,130 164,132" fill="#c05050" opacity="0.6"/>
+
+        <!-- Headdress / crown -->
+        <path d="M138,100 Q140,88 148,82 Q154,78 160,77 Q166,78 172,82 Q180,88 182,100" fill="#2a0e60" stroke="#6a2ea0" stroke-width="1"/>
+        <!-- Crown gems -->
+        <polygon points="160,72 163,80 157,80" fill="#c040e0"/>
+        <polygon points="148,78 151,86 145,86" fill="#8040ff"/>
+        <polygon points="172,78 175,86 169,86" fill="#8040ff"/>
+        <!-- Crown jewels -->
+        <circle cx="160" cy="73" r="3.5" fill="#e060ff" stroke="#c040e0" stroke-width="0.5"/>
+        <circle cx="148" cy="79" r="2.5" fill="#a060ff"/>
+        <circle cx="172" cy="79" r="2.5" fill="#a060ff"/>
+
+        <!-- Mystical jewelry -->
+        <circle cx="160" cy="148" r="2" fill="#c040e0" opacity="0.8" filter="url(#glow)"/>
+
+        <!-- Candles on table sides -->
+        <rect x="68" y="204" width="8" height="24" rx="3" fill="#f5e8b0"/>
+        <ellipse cx="72" cy="204" rx="4" ry="3" fill="#f5e8b0"/>
+        <ellipse cx="72" cy="203" rx="2" ry="5" fill="#ff8040" opacity="0.9"/>
+        <ellipse cx="72" cy="200" rx="1" ry="3" fill="#ffcc80" opacity="0.7"/>
+
+        <rect x="244" y="204" width="8" height="24" rx="3" fill="#f5e8b0"/>
+        <ellipse cx="248" cy="204" rx="4" ry="3" fill="#f5e8b0"/>
+        <ellipse cx="248" cy="203" rx="2" ry="5" fill="#ff8040" opacity="0.9"/>
+        <ellipse cx="248" cy="200" rx="1" ry="3" fill="#ffcc80" opacity="0.7"/>
+
+        <!-- Candle glow -->
+        <circle cx="72" cy="200" r="12" fill="#ff8040" opacity="0.08"/>
+        <circle cx="248" cy="200" r="12" fill="#ff8040" opacity="0.08"/>
+
+        <!-- Sparkle stars around ball -->
+        <g filter="url(#glow)" opacity="0.7">
+          <path d="M100,130 L102,126 L104,130 L108,132 L104,134 L102,138 L100,134 L96,132 Z" fill="#c0a0ff"/>
+          <path d="M215,118 L217,115 L219,118 L222,120 L219,122 L217,125 L215,122 L212,120 Z" fill="#a0c0ff"/>
+          <path d="M108,170 L109,167 L110,170 L113,171 L110,172 L109,175 L108,172 L105,171 Z" fill="#e0c0ff" opacity="0.6"/>
+        </g>
+      </svg>
+
+      <!-- Result area -->
+      <div id="oracle-result" style="opacity:0;transition:opacity 1s;text-align:center;width:100%;padding:0 16px;margin-top:-8px;">
+        <p style="font-size:11px;color:rgba(255,255,255,0.35);font-style:italic;margin-bottom:6px;">The Oracle has seen your fate...</p>
+        <p id="oracle-title" style="font-size:18px;font-weight:700;color:var(--text);margin:0 0 3px;"></p>
+        <p id="oracle-artist" style="font-size:13px;color:var(--accent);margin:0 0 12px;"></p>
+        <div id="oracle-actions"></div>
+      </div>
     </div>
-    <div id="oracle-result" style="opacity:0;transition:opacity 0.8s;"></div>
-  </div>`;
-  setTimeout(()=>{
-    const el=document.getElementById('oracle-result'); if(!el)return;
-    el.style.opacity='1';
-    el.innerHTML='<p style="font-size:12px;color:rgba(255,255,255,0.4);font-style:italic;margin-bottom:10px;">Tonight you shall listen to...</p>'+(art&&art!='https://st.discogs.com/'?'<img src="'+art+'" style="width:110px;height:110px;object-fit:cover;border-radius:10px;margin-bottom:10px;box-shadow:0 8px 24px rgba(0,0,0,0.6);">':'')+'<p style="font-size:20px;font-weight:700;color:var(--text);margin:0 0 4px;">'+escHtml(bi.title)+'</p><p style="font-size:14px;color:var(--accent);margin:0 0 12px;">'+escHtml(bi.artists[0]?.name||'')+'</p>'+pickerActions();
-  },2200);
+  `;
+
+  // After 2 seconds, materialize album art in ball and reveal result
+  setTimeout(() => {
+    // Load art into ball
+    if (art && art !== 'https://st.discogs.com/') {
+      const img = document.getElementById('oracle-art-img');
+      if (img) img.setAttribute('href', art);
+      const artGroup = document.getElementById('oracle-art-group');
+      if (artGroup) {
+        artGroup.style.transition = 'opacity 1.2s';
+        artGroup.style.opacity = '1';
+      }
+    }
+    // Reveal text
+    const el = document.getElementById('oracle-result');
+    const titleEl = document.getElementById('oracle-title');
+    const artistEl = document.getElementById('oracle-artist');
+    const actionsEl = document.getElementById('oracle-actions');
+    if (titleEl) titleEl.textContent = bi.title;
+    if (artistEl) artistEl.textContent = bi.artists[0]?.name || '';
+    if (actionsEl) actionsEl.innerHTML = pickerActions();
+    if (el) el.style.opacity = '1';
+  }, 2400);
 }
 
-function runShuffle(c) {
-  const pool=[...releases].sort(()=>Math.random()-0.5).slice(0,5);
-  pool[Math.floor(Math.random()*pool.length)]=randomRecord;
-  let fc=0;
-  c.innerHTML=`<p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;">Tap a card</p>
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;max-width:320px;">
-      ${pool.map((rec,i)=>{const art=rec.basic_information.cover_image||rec.basic_information.thumb||'';const win=rec===randomRecord;
-        return '<div style="perspective:800px;width:88px;height:88px;cursor:pointer;" onclick="doFlip(this,'+win+')">'
-          +'<div style="position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform 0.6s;">'
-          +'<div style="position:absolute;inset:0;backface-visibility:hidden;border-radius:10px;background:var(--card);border:var(--border-w) solid var(--border);display:flex;align-items:center;justify-content:center;font-size:32px;">🎵</div>'
-          +'<div style="position:absolute;inset:0;backface-visibility:hidden;border-radius:10px;overflow:hidden;transform:rotateY(180deg);">'+(art&&art!='https://st.discogs.com/'?'<img src="'+art+'" style="width:100%;height:100%;object-fit:cover;">':"<div style='width:100%;height:100%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:32px;'>🎵</div>")+'</div>'
-          +'</div></div>';
-      }).join('')}
-    </div>
-    <div id="shuffle-result" style="opacity:0;transition:opacity 0.5s;text-align:center;margin-top:10px;"></div>`;
-  window.doFlip=function(el,isWin){
-    const inner=el.querySelector('div');
-    if(!inner||inner.style.transform==='rotateY(180deg)')return;
-    inner.style.transform='rotateY(180deg)'; fc++;
-    const show=()=>{
-      const bi=randomRecord.basic_information;
-      document.getElementById('shuffle-result').style.opacity='1';
-      document.getElementById('shuffle-result').innerHTML='<p style="font-size:16px;font-weight:700;color:var(--text);margin:4px 0 2px;">'+escHtml(bi.title)+'</p><p style="font-size:13px;color:var(--accent);margin:0 0 8px;">'+escHtml(bi.artists[0]?.name||'')+'</p>'+pickerActions();
-    };
-    if(isWin||fc>=pool.length)setTimeout(show,400);
-  };
-}
+
 
 
 // ── VIBE PICKER ──
@@ -1095,7 +1389,12 @@ function runVibePicker(c) {
   // Auto-detect time of day
   const hour = new Date().getHours();
   const autoTime = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : hour < 21 ? 'Evening' : 'Late night';
-  vibeSelections = { mood: null, time: autoTime, setting: null, genre: null };
+  // Only reset if no selections made yet, otherwise keep current selections
+  if (!vibeSelections.mood && !vibeSelections.setting && !vibeSelections.genre) {
+    vibeSelections = { mood: null, time: autoTime, setting: null, genre: null };
+  } else {
+    vibeSelections.time = vibeSelections.time || autoTime;
+  }
 
   const myGenres = [...new Set(releases.map(r => r.basic_information.genres?.[0]).filter(Boolean))].sort();
 
@@ -1165,8 +1464,8 @@ function runVibePicker(c) {
   }
 
   window.renderVibeDisplay = function() {
-    const container = document.getElementById('picker-container');
-    if (container) { runVibePicker(container); }
+    // Just re-render the vibe UI - vibeSelections is already updated by the button onclick
+    renderVibe();
   };
 
   window.updateVibeMatchCount = function() {
