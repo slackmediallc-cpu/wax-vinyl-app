@@ -535,9 +535,13 @@ function buildPresetPills() {
   });
 }
 
-// Backend API — no CORS issues, all calls go through our server
-async function apiGet(path) {
-  const res = await fetch(path, { credentials: 'include' });
+// Backend API — session key stored in localStorage, passed as ?sk= param
+function getSK() { return localStorage.getItem('wax_sk') || ''; }
+
+async function apiGet(endpoint) {
+  const sk = getSK();
+  const sep = endpoint.includes('?') ? '&' : '?';
+  const res = await fetch(endpoint + (sk ? sep + 'sk=' + sk : ''));
   if (res.status === 401) throw new Error('not_authenticated');
   if (!res.ok) throw new Error('API error ' + res.status);
   return res.json();
@@ -798,9 +802,11 @@ function closeSettings() {
 }
 
 function reconnect() {
-  // With OAuth, reconnect means log out and re-authenticate
   if (confirm('This will log you out and reconnect your Discogs account. Continue?')) {
-    fetch('/auth/logout', { credentials: 'include' }).then(() => {
+    const sk = localStorage.getItem('wax_sk') || '';
+    localStorage.removeItem('wax_sk');
+    localStorage.removeItem('wax_user');
+    fetch('/auth/logout?sk=' + sk).then(() => {
       window.location.href = '/auth/login';
     });
   }
@@ -835,14 +841,23 @@ function showLoading(msg) {
 }
 
 async function init() {
-  // Check URL params for auth result
   const params = new URLSearchParams(window.location.search);
   const authResult = params.get('auth');
   const authError = params.get('error');
-  if (authResult || authError) {
-    // Clean URL
+  const sk = params.get('sk');
+  const user = params.get('user');
+
+  // Save session key from OAuth callback
+  if (sk) {
+    localStorage.setItem('wax_sk', sk);
+    if (user) localStorage.setItem('wax_user', decodeURIComponent(user));
+  }
+
+  // Clean URL
+  if (authResult || authError || sk) {
     window.history.replaceState({}, '', '/');
   }
+
   if (authError) {
     showLogin('Authorization failed. Please try again.');
     return;
@@ -852,11 +867,12 @@ async function init() {
   try {
     const status = await checkAuthStatus();
     if (!status.authenticated) {
+      localStorage.removeItem('wax_sk');
       showLogin();
       return;
     }
     USERNAME = status.username;
-    showLoading(`Loading your collection, ${USERNAME}…<br><span style="font-size:11px;opacity:0.6;">Fetching all ${releases.length || ''} records from Discogs</span>`);
+    showLoading(`Loading your collection, ${USERNAME}…<br><span style="font-size:11px;opacity:0.6;">Fetching all your records from Discogs</span>`);
     const data = await fetchCollection();
     releases = data.releases || [];
     filtered = [...releases];
@@ -864,6 +880,7 @@ async function init() {
     renderApp();
   } catch(e) {
     if (e.message === 'not_authenticated') {
+      localStorage.removeItem('wax_sk');
       showLogin();
     } else {
       showLogin('Something went wrong. Please try again.');
