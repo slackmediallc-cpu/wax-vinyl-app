@@ -11,7 +11,6 @@ const DISCOGS_SECRET = (process.env.DISCOGS_SECRET || '').trim();
 const APP_URL = (process.env.APP_URL || `http://localhost:${PORT}`).trim().replace(/\/$/, '');
 const CALLBACK_URL = `${APP_URL}/auth/callback`;
 
-// In-memory token store (keyed by state token)
 const tokenStore = new Map();
 
 app.use(express.json());
@@ -64,7 +63,6 @@ app.get('/auth/login', async (req, res) => {
     const params = new URLSearchParams(text);
     const token = params.get('oauth_token');
     const secret = params.get('oauth_token_secret');
-    // Store secret keyed by request token
     tokenStore.set(token, { secret, created: Date.now() });
     res.redirect(`https://discogs.com/oauth/authorize?oauth_token=${token}`);
   } catch(e) {
@@ -78,7 +76,6 @@ app.get('/auth/callback', async (req, res) => {
     const stored = tokenStore.get(oauth_token);
     if (!stored) return res.redirect('/?error=session_expired');
     tokenStore.delete(oauth_token);
-
     const url = 'https://api.discogs.com/oauth/access_token';
     const header = buildAuthHeader('POST', url, { oauth_token, oauth_verifier }, stored.secret);
     const response = await fetch(url, {
@@ -86,13 +83,14 @@ app.get('/auth/callback', async (req, res) => {
       headers: { 'Authorization': header, 'User-Agent': 'WaxVinylApp/1.0', 'Content-Length': '0' }
     });
     const text = await response.text();
+    console.log('Access token response:', response.status, text.substring(0, 100));
     if (!response.ok) return res.redirect('/?error=auth_failed');
     const p = new URLSearchParams(text);
     const accessToken = p.get('oauth_token');
     const accessSecret = p.get('oauth_token_secret');
+    console.log('Got access token:', accessToken ? accessToken.substring(0,8) : 'NONE');
     const identity = await discogsGet('/oauth/identity', accessToken, accessSecret);
-
-    // Store in tokenStore by a new session key
+    console.log('Identity:', identity.username);
     const sessionKey = crypto.randomBytes(32).toString('hex');
     tokenStore.set(sessionKey, {
       accessToken,
@@ -101,8 +99,6 @@ app.get('/auth/callback', async (req, res) => {
       avatar: identity.avatar_url,
       created: Date.now()
     });
-
-    // Pass session key via URL, frontend stores in localStorage
     res.redirect(`/?auth=success&sk=${sessionKey}&user=${encodeURIComponent(identity.username)}`);
   } catch(e) {
     console.error('Callback error:', e.message);
@@ -128,9 +124,12 @@ app.get('/api/collection', async (req, res) => {
   const sk = req.query.sk;
   if (!sk) return res.status(401).json({ error: 'Not authenticated' });
   const stored = tokenStore.get(sk);
-  if (!stored) return res.status(401).json({ error: 'Session expired, please login again' });
+  if (!stored) return res.status(401).json({ error: 'Session expired' });
   try {
     const { username, accessToken, accessSecret } = stored;
+    console.log('Fetching collection for:', username);
+    console.log('Token:', accessToken ? accessToken.substring(0,8) : 'NONE');
+    console.log('Secret:', accessSecret ? accessSecret.substring(0,8) : 'NONE');
     let page = 1, all = [];
     while (true) {
       const data = await discogsGet(
@@ -144,7 +143,7 @@ app.get('/api/collection', async (req, res) => {
     res.json({ releases: all, total: all.length, username });
   } catch(e) {
     console.error('Collection error:', e.message);
-    res.status(500).json({ error: 'Failed to fetch collection' });
+    res.status(500).json({ error: e.message });
   }
 });
 
@@ -157,6 +156,14 @@ app.get('/api/release/:id', async (req, res) => {
     const data = await discogsGet(`/releases/${req.params.id}`, stored.accessToken, stored.accessSecret);
     res.json(data);
   } catch(e) { res.status(500).json({ error: 'Failed to fetch release' }); }
+});
+
+app.get('/debug/store', (req, res) => {
+  const entries = [];
+  tokenStore.forEach((v, k) => {
+    entries.push({ key: k.substring(0,8)+'...', username: v.username, hasToken: !!v.accessToken, age: Math.round((Date.now()-v.created)/1000)+'s' });
+  });
+  res.json({ storeSize: tokenStore.size, entries });
 });
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
