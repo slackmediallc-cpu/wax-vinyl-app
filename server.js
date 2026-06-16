@@ -1,5 +1,4 @@
 const express = require('express');
-const session = require('express-session');
 const fetch = require('node-fetch');
 const crypto = require('crypto');
 const path = require('path');
@@ -9,17 +8,13 @@ const PORT = process.env.PORT || 3000;
 
 const DISCOGS_KEY = (process.env.DISCOGS_KEY || '').trim();
 const DISCOGS_SECRET = (process.env.DISCOGS_SECRET || '').trim();
-const SESSION_SECRET = (process.env.SESSION_SECRET || 'wax-secret').trim();
 const APP_URL = (process.env.APP_URL || `http://localhost:${PORT}`).trim().replace(/\/$/, '');
 const CALLBACK_URL = `${APP_URL}/auth/callback`;
 
+// In-memory token store (keyed by state token)
+const tokenStore = new Map();
+
 app.use(express.json());
-app.use(session({
-  secret: SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: { maxAge: 30 * 24 * 60 * 60 * 1000, sameSite: 'lax', secure: false }
-}));
 app.use(express.static(path.join(__dirname, 'public')));
 
 function pct(str) { return encodeURIComponent(String(str)); }
@@ -69,8 +64,9 @@ app.get('/auth/login', async (req, res) => {
     const params = new URLSearchParams(text);
     const token = params.get('oauth_token');
     const secret = params.get('oauth_token_secret');
-    req.session.oauthSecret = secret;
-    req.session.save(() => res.redirect(`https://discogs.com/oauth/authorize?oauth_token=${token}`));
+    // Store secret keyed by request token
+    tokenStore.set(token, { secret, created: Date.now() });
+    res.redirect(`https://discogs.com/oauth/authorize?oauth_token=${token}`);
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
@@ -79,8 +75,12 @@ app.get('/auth/login', async (req, res) => {
 app.get('/auth/callback', async (req, res) => {
   const { oauth_token, oauth_verifier } = req.query;
   try {
+    const stored = tokenStore.get(oauth_token);
+    if (!stored) return res.redirect('/?error=session_expired');
+    tokenStore.delete(oauth_token);
+
     const url = 'https://api.discogs.com/oauth/access_token';
-    const header = buildAuthHeader('POST', url, { oauth_token, oauth_verifier }, req.session.oauthSecret);
+    const header = buildAuthHeader('POST', url, { oauth_token, oauth_verifier }, stored.secret);
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Authorization': header, 'User-Agent': 'WaxVinylApp/1.0', 'Content-Length': '0' }
@@ -91,13 +91,19 @@ app.get('/auth/callback', async (req, res) => {
     const accessToken = p.get('oauth_token');
     const accessSecret = p.get('oauth_token_secret');
     const identity = await discogsGet('/oauth/identity', accessToken, accessSecret);
-    req.session.accessToken = accessToken;
-    req.session.accessSecret = accessSecret;
-    req.session.username = identity.username;
-    req.session.save((err) => {
-      if (err) console.error('Session save error:', err);
-      res.redirect('/?auth=success');
+
+    // Store in tokenStore by a new session key
+    const sessionKey = crypto.randomBytes(32).toString('hex');
+    tokenStore.set(sessionKey, {
+      accessToken,
+      accessSecret,
+      username: identity.username,
+      avatar: identity.avatar_url,
+      created: Date.now()
     });
+
+    // Pass session key via URL, frontend stores in localStorage
+    res.redirect(`/?auth=success&sk=${sessionKey}&user=${encodeURIComponent(identity.username)}`);
   } catch(e) {
     console.error('Callback error:', e.message);
     res.redirect('/?error=auth_failed');
@@ -105,21 +111,26 @@ app.get('/auth/callback', async (req, res) => {
 });
 
 app.get('/auth/status', (req, res) => {
-  res.json(req.session.username
-    ? { authenticated: true, username: req.session.username }
-    : { authenticated: false });
+  const sk = req.query.sk;
+  if (!sk) return res.json({ authenticated: false });
+  const stored = tokenStore.get(sk);
+  if (!stored) return res.json({ authenticated: false });
+  res.json({ authenticated: true, username: stored.username, avatar: stored.avatar });
 });
 
-app.get('/auth/logout', (req, res) => { req.session.destroy(); res.json({ success: true }); });
+app.get('/auth/logout', (req, res) => {
+  const sk = req.query.sk;
+  if (sk) tokenStore.delete(sk);
+  res.json({ success: true });
+});
 
-function requireAuth(req, res, next) {
-  if (!req.session.username) return res.status(401).json({ error: 'Not authenticated' });
-  next();
-}
-
-app.get('/api/collection', requireAuth, async (req, res) => {
+app.get('/api/collection', async (req, res) => {
+  const sk = req.query.sk;
+  if (!sk) return res.status(401).json({ error: 'Not authenticated' });
+  const stored = tokenStore.get(sk);
+  if (!stored) return res.status(401).json({ error: 'Session expired, please login again' });
   try {
-    const { username, accessToken, accessSecret } = req.session;
+    const { username, accessToken, accessSecret } = stored;
     let page = 1, all = [];
     while (true) {
       const data = await discogsGet(
@@ -137,9 +148,13 @@ app.get('/api/collection', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/api/release/:id', requireAuth, async (req, res) => {
+app.get('/api/release/:id', async (req, res) => {
+  const sk = req.query.sk;
+  if (!sk) return res.status(401).json({ error: 'Not authenticated' });
+  const stored = tokenStore.get(sk);
+  if (!stored) return res.status(401).json({ error: 'Not authenticated' });
   try {
-    const data = await discogsGet(`/releases/${req.params.id}`, req.session.accessToken, req.session.accessSecret);
+    const data = await discogsGet(`/releases/${req.params.id}`, stored.accessToken, stored.accessSecret);
     res.json(data);
   } catch(e) { res.status(500).json({ error: 'Failed to fetch release' }); }
 });
