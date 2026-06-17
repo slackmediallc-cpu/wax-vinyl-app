@@ -382,17 +382,23 @@
       scrollbar-width: thin; scrollbar-color: var(--border) transparent;
       min-width: 0;
     }
+    #desktop-main .collection {
+      flex: none !important;
+      overflow-y: visible !important;
+      padding: 0 !important;
+      width: 100% !important;
+    }
     #desktop-main .grid-view {
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
-      gap: 16px !important;
-      padding: 20px !important;
+      display: grid !important;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+      gap: 12px !important;
+      padding: 16px !important;
+      align-content: start !important;
     }
     #desktop-main .list-view {
-      padding: 0 20px !important;
-    }
-    #desktop-main #collection-container {
-      display: block;
-      width: 100%;
+      display: flex !important;
+      flex-direction: column !important;
+      padding: 0 16px 40px !important;
     }
 
     /* Nav goes in sidebar on desktop */
