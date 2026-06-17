@@ -1797,30 +1797,28 @@ function soundVibeReveal() {
 }
 
 // Oracle voice
-function speakOracle(text) {
+async function speakOracle(text) {
   try {
-    window.speechSynthesis.cancel();
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 0.68;
-    utt.pitch = 0.55;
-    utt.volume = 0.85;
-    // Load voices - may need a moment on some browsers
-    function pickVoice() {
-      const voices = window.speechSynthesis.getVoices();
-      if (!voices.length) return null;
-      // Prefer deep/dramatic English voices
-      return voices.find(v => v.name === 'Moira') ||
-             voices.find(v => v.name === 'Samantha') ||
-             voices.find(v => v.name === 'Karen') ||
-             voices.find(v => v.name === 'Daniel') ||
-             voices.find(v => v.lang === 'en-GB') ||
-             voices.find(v => v.lang.startsWith('en')) ||
-             voices[0];
+    const sk = getSK();
+    if (!sk) return;
+    const res = await fetch('/api/speak?sk=' + sk, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) {
+      console.warn('ElevenLabs TTS failed:', res.status);
+      return;
     }
-    const voice = pickVoice();
-    if (voice) utt.voice = voice;
-    window.speechSynthesis.speak(utt);
-  } catch(e) {}
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.volume = 0.9;
+    audio.play();
+    audio.onended = () => URL.revokeObjectURL(url);
+  } catch(e) {
+    console.warn('Oracle voice error:', e.message);
+  }
 }
 
 const ORACLE_SLOGANS = [
