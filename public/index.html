@@ -690,8 +690,11 @@ function renderApp() {
       <button class="fab" onclick="openRandom()" aria-label="Pick random record" title="Pick a random record">&#127922;</button>
     `;
   }
-  renderChips();
-  renderCollection();
+  // Defer render to ensure DOM is painted after innerHTML update
+  setTimeout(function() {
+    renderChips();
+    renderCollection();
+  }, 0);
 }
 
 window.addEventListener('resize', function() {
