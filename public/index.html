@@ -145,6 +145,10 @@
   .spinner { width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes pulse { 0%,100%{transform:scale(1);opacity:0.8;} 50%{transform:scale(1.08);opacity:1;} }
+  @keyframes artExpand { 0%{opacity:0;transform:scale(0.6) translateY(20px);} 60%{transform:scale(1.03) translateY(-2px);} 100%{opacity:1;transform:scale(1) translateY(0);} }
+  @keyframes artCollapse { 0%{opacity:1;transform:scale(1);} 100%{opacity:0;transform:scale(0.5) translateY(30px);} }
+  #art-big { transform-origin: center bottom; }
+  #art-expanded { overflow: hidden; }
   @keyframes reveal { 0%{opacity:0;transform:translateY(20px);} 100%{opacity:1;transform:translateY(0);} }
   .loading-text { font-size: 13px; color: var(--subtext); }
 
@@ -749,17 +753,38 @@ function artThumbTap(idx) {
   const car = document.getElementById('art-carousel');
   if (!car) return;
   const srcs = window._artSrcs || [];
+  const wasExpanded = car.dataset.expanded === 'true';
   car.dataset.current = idx;
   car.dataset.expanded = 'true';
-  // Show expanded
-  document.getElementById('art-expanded').style.display = 'block';
-  document.getElementById('art-big').src = srcs[idx];
-  document.getElementById('art-counter').textContent = (idx+1) + ' / ' + srcs.length;
+
+  const expanded = document.getElementById('art-expanded');
+  const bigImg = document.getElementById('art-big');
+  const counter = document.getElementById('art-counter');
+
+  // Update src and counter
+  bigImg.src = srcs[idx];
+  counter.textContent = (idx+1) + ' / ' + srcs.length;
+
+  if (!wasExpanded) {
+    // Animate in from thumbnail
+    expanded.style.display = 'block';
+    bigImg.style.animation = 'none';
+    bigImg.offsetHeight; // force reflow
+    bigImg.style.animation = 'artExpand 0.38s cubic-bezier(0.34,1.56,0.64,1) forwards';
+  } else {
+    // Already expanded - quick crossfade to new image
+    bigImg.style.opacity = '0.5';
+    bigImg.style.transition = 'opacity 0.15s';
+    setTimeout(() => { bigImg.style.opacity = '1'; }, 150);
+  }
+
   // Highlight active thumb
   car.querySelectorAll('#art-thumbs img').forEach((img, i) => {
     img.style.borderColor = i === idx ? 'var(--accent)' : 'var(--border)';
+    img.style.opacity = i === idx ? '1' : '0.6';
+    img.style.transition = 'opacity 0.2s, border-color 0.2s';
   });
-  // Scroll active thumb into view
+
   const thumbs = car.querySelectorAll('#art-thumbs img');
   if (thumbs[idx]) thumbs[idx].scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
 }
@@ -777,10 +802,19 @@ function artNav(dir) {
 function artCollapse() {
   const car = document.getElementById('art-carousel');
   if (!car) return;
-  document.getElementById('art-expanded').style.display = 'none';
-  // Reset thumb borders
-  car.querySelectorAll('#art-thumbs img').forEach((img, i) => {
+  car.dataset.expanded = 'false';
+  const bigImg = document.getElementById('art-big');
+  const expanded = document.getElementById('art-expanded');
+  bigImg.style.animation = 'none';
+  bigImg.offsetHeight;
+  bigImg.style.animation = 'artCollapse 0.28s cubic-bezier(0.4,0,1,1) forwards';
+  setTimeout(function() {
+    expanded.style.display = 'none';
+    bigImg.style.animation = 'none';
+  }, 280);
+  car.querySelectorAll('#art-thumbs img').forEach(function(img, i) {
     img.style.borderColor = i === 0 ? 'var(--accent)' : 'var(--border)';
+    img.style.opacity = '1';
   });
 }
 
