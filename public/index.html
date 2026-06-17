@@ -368,6 +368,18 @@
     #desktop-main {
       flex: 1; height: 100vh; overflow-y: auto;
       scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+      min-width: 0;
+    }
+    #desktop-main .grid-view {
+      display: grid !important;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      padding: 20px;
+      min-height: 200px;
+    }
+    #desktop-main .list-view {
+      padding: 0 20px;
+      min-height: 200px;
     }
 
     /* Nav goes in sidebar on desktop */
@@ -756,7 +768,8 @@ const discPlaceholderSm = `<div style="width:28px;height:28px;border-radius:50%;
 
 function renderCollection() {
   const con = document.getElementById('collection-container');
-  if (!con) return;
+  if (!con) { console.warn('collection-container not found'); return; }
+  console.log('renderCollection: found container, releases:', releases.length, 'filtered:', filtered.length);
   const list = filtered.length || searchQuery || currentFilter !== 'all' ? filtered : releases;
   if (list.length === 0) {
     con.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">&#127902;</div><div class="empty-title">No records found</div><div class="empty-sub">Try a different search or filter.</div></div>`;
