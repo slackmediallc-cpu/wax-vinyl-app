@@ -572,9 +572,7 @@ function renderApp() {
       <button class="view-btn ${viewMode==='list'?'active':''}" onclick="setView('list')">&#9776; List</button>
     </div>
     <div class="collection ${viewMode===('grid')?'grid-view':'list-view'}" id="collection-container"></div>
-    <div class="tab-bar">
-      <div class="tab-item active"><span class="ti">&#9679;</span><span>Collection</span></div>
-    </div>
+
     <button class="fab" onclick="openRandom()" aria-label="Pick random record" title="Pick a random record">&#127922;</button>
   `;
   renderChips();
