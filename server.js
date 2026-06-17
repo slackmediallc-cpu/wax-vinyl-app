@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 
 const DISCOGS_KEY = (process.env.DISCOGS_KEY || '').trim();
 const ELEVENLABS_KEY = (process.env.ELEVENLABS_KEY || '').trim();
-const CHARLOTTE_VOICE_ID = 'XB0fDUnXU5powFXDhCwa';
+const SZYMON_VOICE_ID = 'XB0fDUnXU5powFXDhCwa';
 const DISCOGS_SECRET = (process.env.DISCOGS_SECRET || '').trim();
 const APP_URL = (process.env.APP_URL || `http://localhost:${PORT}`).trim().replace(/\/$/, '');
 const CALLBACK_URL = `${APP_URL}/auth/callback`;
@@ -184,7 +184,7 @@ app.post('/api/speak', async (req, res) => {
   if (!ELEVENLABS_KEY) return res.status(500).json({ error: 'ElevenLabs not configured' });
 
   try {
-    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${CHARLOTTE_VOICE_ID}/stream`, {
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${SZYMON_VOICE_ID}/stream`, {
       method: 'POST',
       headers: {
         'xi-api-key': ELEVENLABS_KEY,
