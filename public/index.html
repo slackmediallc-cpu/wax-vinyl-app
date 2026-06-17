@@ -951,7 +951,10 @@ function runCrateDig(c) {
         return;
       }
     }
+    const prevItem = Math.floor((pos) / STEP);
     pos += speed;
+    const newItem = Math.floor(pos / STEP);
+    if (newItem !== prevItem && phase <= 2) soundCrateFlip();
     strip.style.transform = 'translateX('+(center-pos)+'px)';
     requestAnimationFrame(tick);
   }
@@ -1319,97 +1322,110 @@ const VIBE_MAP = {
 };
 
 function runVibePicker(c) {
-  // Auto-detect time of day
-  const hour = new Date().getHours();
-  const autoTime = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : hour < 21 ? 'Evening' : 'Late night';
-  // Only reset if no selections made yet, otherwise keep current selections
-  if (!vibeSelections.mood && !vibeSelections.setting && !vibeSelections.genre) {
-    vibeSelections = { mood: null, time: autoTime, setting: null, genre: null };
-  } else {
-    vibeSelections.time = vibeSelections.time || autoTime;
+  try {
+    const hour = new Date().getHours();
+    const autoTime = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : hour < 21 ? 'Evening' : 'Late night';
+    if (!vibeSelections.mood && !vibeSelections.setting && !vibeSelections.genre) {
+      vibeSelections.time = autoTime;
+    }
+    renderVibeUI(c);
+  } catch(e) {
+    console.error('Vibe picker error:', e);
+    c.innerHTML = '<div style="text-align:center;padding:40px 20px;">'
+      + '<p style="color:rgba(255,255,255,0.6);margin-bottom:20px;">Something went wrong with the vibe picker.</p>'
+      + '<button onclick="closeRandom()" style="background:var(--accent);border:none;border-radius:8px;padding:12px 24px;color:var(--accent-text);cursor:pointer;font-size:14px;">Close</button>'
+      + '</div>';
   }
+}
 
+function renderVibeUI(c) {
   const myGenres = [...new Set(releases.map(r => r.basic_information.genres?.[0]).filter(Boolean))].sort();
 
-  function renderVibe() {
-    const myGenres = [...new Set(releases.map(r => r.basic_information.genres?.[0]).filter(Boolean))].sort();
-    const pool = scoreCollection();
+  // Build HTML using string concat - NO template literals to avoid quoting issues
+  let html = '<div style="width:100%;max-width:340px;text-align:center;overflow-y:auto;max-height:75vh;">';
+  html += '<p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px;">✨ What's your vibe?</p>';
 
-    c.innerHTML = `
-      <div style="width:100%;max-width:340px;text-align:center;overflow-y:auto;max-height:80vh;padding-bottom:8px;">
-        <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px;">✨ What's your vibe?</p>
+  // Mood
+  html += '<div style="margin-bottom:12px;text-align:left;">';
+  html += '<p style="font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Mood</p>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+  Object.keys(VIBE_MAP.mood).forEach(m => {
+    const active = vibeSelections.mood === m;
+    html += '<button class="vibe-btn" data-type="mood" data-val="' + m + '" style="font-size:11px;padding:6px 10px;border-radius:16px;cursor:pointer;'
+      + 'border:0.5px solid ' + (active ? 'var(--accent)' : 'rgba(255,255,255,0.2)') + ';'
+      + 'background:' + (active ? 'var(--accent)' : 'rgba(255,255,255,0.05)') + ';'
+      + 'color:' + (active ? 'var(--accent-text)' : 'rgba(255,255,255,0.7)') + ';">' + m + '</button>';
+  });
+  html += '</div></div>';
 
-        <div style="margin-bottom:12px;text-align:left;">
-          <p style="font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Mood</p>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;">
-            ${Object.keys(VIBE_MAP.mood).map(m => `<button class="vibe-btn" data-type="mood" data-val="${m}"
-              style="font-size:11px;padding:6px 10px;border-radius:16px;cursor:pointer;
-              border:0.5px solid ${vibeSelections.mood===m?'var(--accent)':'rgba(255,255,255,0.15)'};
-              background:${vibeSelections.mood===m?'var(--accent)':'transparent'};
-              color:${vibeSelections.mood===m?'var(--accent-text)':'rgba(255,255,255,0.6)'};">${m}</button>`).join('')}
-          </div>
-        </div>
+  // Time
+  html += '<div style="margin-bottom:12px;text-align:left;">';
+  html += '<p style="font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Time of day</p>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+  Object.keys(VIBE_MAP.time).forEach(t => {
+    const active = vibeSelections.time === t;
+    html += '<button class="vibe-btn" data-type="time" data-val="' + t + '" style="font-size:11px;padding:6px 10px;border-radius:16px;cursor:pointer;'
+      + 'border:0.5px solid ' + (active ? 'var(--accent)' : 'rgba(255,255,255,0.2)') + ';'
+      + 'background:' + (active ? 'var(--accent)' : 'rgba(255,255,255,0.05)') + ';'
+      + 'color:' + (active ? 'var(--accent-text)' : 'rgba(255,255,255,0.7)') + ';">' + t + '</button>';
+  });
+  html += '</div></div>';
 
-        <div style="margin-bottom:12px;text-align:left;">
-          <p style="font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Time of day <span style="color:var(--accent);font-size:9px;">(auto-detected)</span></p>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;">
-            ${Object.keys(VIBE_MAP.time).map(t => `<button class="vibe-btn" data-type="time" data-val="${t}"
-              style="font-size:11px;padding:6px 10px;border-radius:16px;cursor:pointer;
-              border:0.5px solid ${vibeSelections.time===t?'var(--accent)':'rgba(255,255,255,0.15)'};
-              background:${vibeSelections.time===t?'var(--accent)':'transparent'};
-              color:${vibeSelections.time===t?'var(--accent-text)':'rgba(255,255,255,0.6)'};">${t}</button>`).join('')}
-          </div>
-        </div>
+  // Setting
+  html += '<div style="margin-bottom:12px;text-align:left;">';
+  html += '<p style="font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Setting</p>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+  Object.keys(VIBE_MAP.setting).forEach(s => {
+    const active = vibeSelections.setting === s;
+    html += '<button class="vibe-btn" data-type="setting" data-val="' + s + '" style="font-size:11px;padding:6px 10px;border-radius:16px;cursor:pointer;'
+      + 'border:0.5px solid ' + (active ? 'var(--accent)' : 'rgba(255,255,255,0.2)') + ';'
+      + 'background:' + (active ? 'var(--accent)' : 'rgba(255,255,255,0.05)') + ';'
+      + 'color:' + (active ? 'var(--accent-text)' : 'rgba(255,255,255,0.7)') + ';">' + s + '</button>';
+  });
+  html += '</div></div>';
 
-        <div style="margin-bottom:12px;text-align:left;">
-          <p style="font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Setting</p>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;">
-            ${Object.keys(VIBE_MAP.setting).map(s => `<button class="vibe-btn" data-type="setting" data-val="${s}"
-              style="font-size:11px;padding:6px 10px;border-radius:16px;cursor:pointer;
-              border:0.5px solid ${vibeSelections.setting===s?'var(--accent)':'rgba(255,255,255,0.15)'};
-              background:${vibeSelections.setting===s?'var(--accent)':'transparent'};
-              color:${vibeSelections.setting===s?'var(--accent-text)':'rgba(255,255,255,0.6)'};">${s}</button>`).join('')}
-          </div>
-        </div>
+  // Genre
+  html += '<div style="margin-bottom:14px;text-align:left;">';
+  html += '<p style="font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Genre <span style="font-size:9px;opacity:0.5;">(optional)</span></p>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+  myGenres.forEach(g => {
+    const active = vibeSelections.genre === g;
+    html += '<button class="vibe-btn" data-type="genre" data-val="' + g + '" style="font-size:11px;padding:6px 10px;border-radius:16px;cursor:pointer;'
+      + 'border:0.5px solid ' + (active ? 'var(--accent)' : 'rgba(255,255,255,0.2)') + ';'
+      + 'background:' + (active ? 'var(--accent)' : 'rgba(255,255,255,0.05)') + ';'
+      + 'color:' + (active ? 'var(--accent-text)' : 'rgba(255,255,255,0.7)') + ';">' + g + '</button>';
+  });
+  html += '</div></div>';
 
-        <div style="margin-bottom:14px;text-align:left;">
-          <p style="font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Genre <span style="color:rgba(255,255,255,0.2);font-size:9px;">(optional)</span></p>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;">
-            ${myGenres.map(g => `<button class="vibe-btn" data-type="genre" data-val="${g}"
-              style="font-size:11px;padding:6px 10px;border-radius:16px;cursor:pointer;
-              border:0.5px solid ${vibeSelections.genre===g?'var(--accent)':'rgba(255,255,255,0.15)'};
-              background:${vibeSelections.genre===g?'var(--accent)':'transparent'};
-              color:${vibeSelections.genre===g?'var(--accent-text)':'rgba(255,255,255,0.6)'};">${g}</button>`).join('')}
-          </div>
-        </div>
+  // Match count
+  const scored = scoreCollection();
+  html += '<p style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:10px;">'
+    + (scored.length > 0 ? scored.length + ' records match your vibe' : 'Select options to filter') + '</p>';
 
-        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:10px;">
-          ${pool.length > 0 ? pool.length + ' records match your vibe' : 'Select options above to filter your collection'}
-        </div>
+  // Buttons
+  html += '<button id="vibe-pick-btn" style="width:100%;background:var(--accent);border:none;border-radius:var(--btn-shape);padding:13px;font-size:14px;font-weight:600;color:var(--accent-text);cursor:pointer;font-family:inherit;margin-bottom:8px;">✨ Pick for me</button>';
+  html += '<button id="vibe-close-btn" style="font-size:11px;color:rgba(255,255,255,0.3);background:none;border:none;cursor:pointer;padding:6px;display:block;width:100%;">Close</button>';
+  html += '</div>';
 
-        <button id="vibe-pick-btn" style="width:100%;background:var(--accent);border:none;border-radius:var(--btn-shape);padding:13px;font-size:14px;font-weight:600;color:var(--accent-text);cursor:pointer;font-family:inherit;">
-          ✨ Pick for me
-        </button>
-        <button id="vibe-close-btn" style="font-size:11px;color:rgba(255,255,255,0.2);background:none;border:none;cursor:pointer;margin-top:8px;display:block;width:100%;">Close</button>
-      </div>
-    `;
+  c.innerHTML = html;
 
-    // Attach events via delegation - NO inline onclick so no quoting issues
-    c.querySelectorAll('.vibe-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const type = btn.dataset.type;
-        const val = btn.dataset.val;
-        if (type === 'genre') {
-          vibeSelections.genre = vibeSelections.genre === val ? null : val;
-        } else {
-          vibeSelections[type] = vibeSelections[type] === val ? null : val;
-        }
-        renderVibe();
-      });
+  // Wire up buttons with event listeners
+  c.querySelectorAll('.vibe-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const type = btn.dataset.type;
+      const val = btn.dataset.val;
+      if (type === 'genre') {
+        vibeSelections.genre = vibeSelections.genre === val ? null : val;
+      } else {
+        vibeSelections[type] = vibeSelections[type] === val ? null : val;
+      }
+      renderVibeUI(c);
     });
+  });
 
-    const pickBtn = document.getElementById('vibe-pick-btn');
-    if (pickBtn) pickBtn.addEventListener('click', () => {
+  const pickBtn = document.getElementById('vibe-pick-btn');
+  if (pickBtn) pickBtn.addEventListener('click', () => {
+    try {
       const pool = scoreCollection();
       const pick = pool.length > 0
         ? pool[Math.floor(Math.random() * Math.min(pool.length, 10))]
@@ -1417,35 +1433,15 @@ function runVibePicker(c) {
       randomRecord = pick.record;
       soundVibeReveal();
       showVibeResult(pick, pool.length);
-    });
+    } catch(e) {
+      console.error('Pick error:', e);
+    }
+  });
 
-    const closeBtn = document.getElementById('vibe-close-btn');
-    if (closeBtn) closeBtn.addEventListener('click', closeRandom);
-  }
-
-  window.renderVibeDisplay = function() {
-    // Just re-render the vibe UI - vibeSelections is already updated by the button onclick
-    renderVibe();
-  };
-
-  window.updateVibeMatchCount = function() {
-    const pool = scoreCollection();
-    const el = document.getElementById('vibe-match-count');
-    if (el) el.textContent = pool.length > 0 ? pool.length + ' records match your vibe' : 'No filters selected yet — will pick from full collection';
-  };
-
-  window.pickByVibe = function() {
-    const pool = scoreCollection();
-    const pick = pool.length > 0
-      ? pool[Math.floor(Math.random() * Math.min(pool.length, 10))]
-      : releases[Math.floor(Math.random() * releases.length)];
-    randomRecord = pick.record;
-    soundVibeReveal();
-    showVibeResult(pick, pool.length);
-  };
-
-  renderVibe();
+  const closeBtn = document.getElementById('vibe-close-btn');
+  if (closeBtn) closeBtn.addEventListener('click', closeRandom);
 }
+
 
 function scoreCollection() {
   const scores = releases.map(record => {
@@ -1669,105 +1665,138 @@ function playNoise(dur, vol=0.15, delay=0) {
   } catch(e) {}
 }
 
-// Oracle: deep mystical chime sequence
+// ── ORACLE SOUNDS ──
 function soundOracle() {
-  [220, 277, 330, 415, 523].forEach((f, i) => {
-    playTone(f, 2.5, 'sine', 0.15, i * 0.4);
+  // Deep resonant bell tones - like a monastery bell
+  [[130, 4.0, 0.18], [196, 3.0, 0.12], [261, 2.0, 0.08], [98, 3.5, 0.06]].forEach(([f, d, v], i) => {
+    playTone(f, d, 'sine', v, i * 0.5);
   });
-  // Low rumble
-  playTone(55, 3, 'sawtooth', 0.04, 0);
-  playTone(82, 2, 'sine', 0.08, 0.8);
 }
-
-// Oracle reveal: ethereal shimmer
 function soundOracleReveal() {
-  [1046, 1318, 1568, 2093].forEach((f, i) => {
-    playTone(f, 1.5, 'sine', 0.06, i * 0.15);
+  // Rising ethereal shimmer - harp-like
+  [261, 329, 392, 523, 659, 784, 1046].forEach((f, i) => {
+    playTone(f, 2.0, 'sine', 0.07, i * 0.08);
   });
-  playTone(523, 2, 'sine', 0.1, 0);
+  playTone(130, 2.5, 'sine', 0.06, 0);
 }
 
-// Wheel tick - single click sound
+// ── WHEEL TICK ──
 function soundWheelTick() {
   try {
     const ctx = getAudioCtx();
-    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.04, ctx.sampleRate);
+    // Sharp mechanical click - like a real prize wheel peg
+    const dur = 0.05;
+    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
     const data = buf.getChannelData(0);
     for (let i = 0; i < data.length; i++) {
-      data[i] = (Math.random()*2-1) * Math.exp(-i / (ctx.sampleRate * 0.008));
+      const t = i / ctx.sampleRate;
+      // Short sharp transient with quick decay
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-t * 120);
     }
     const src = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1200;
+    filter.Q.value = 0.8;
     const gain = ctx.createGain();
-    src.buffer = buf; src.connect(gain); gain.connect(ctx.destination);
-    gain.gain.value = 0.4;
+    gain.gain.value = 0.5;
+    src.buffer = buf;
+    src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
     src.start();
   } catch(e) {}
 }
 
-// Slot: lever click
+// ── SLOT MACHINE SOUNDS ──
 function soundLeverPull() {
-  playTone(180, 0.08, 'square', 0.3);
-  playTone(120, 0.12, 'square', 0.2, 0.06);
-  playNoise(0.1, 0.2, 0.04);
+  try {
+    const ctx = getAudioCtx();
+    // Mechanical clunk of lever
+    playNoise(0.06, 0.3, 0);
+    playTone(220, 0.08, 'square', 0.15, 0.02);
+    playTone(110, 0.15, 'sine', 0.2, 0.05);
+    playNoise(0.04, 0.15, 0.12);
+  } catch(e) {}
 }
 
-// Slot: spinning tick (rapid)
 let slotTickInterval = null;
 function startSlotTick() {
-  let speed = 60, count = 0;
+  stopSlotTick();
+  let delay = 30; // ms - starts fast
+  let count = 0;
   function tick() {
-    playTone(800 + Math.random()*400, 0.02, 'square', 0.08);
+    // Mechanical reel tick - like a real slot machine
+    try {
+      const ctx = getAudioCtx();
+      const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.03), ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) {
+        d[i] = (Math.random()*2-1) * Math.exp(-i/(ctx.sampleRate*0.004));
+      }
+      const src = ctx.createBufferSource();
+      const g = ctx.createGain(); g.gain.value = 0.25;
+      src.buffer = buf; src.connect(g); g.connect(ctx.destination); src.start();
+    } catch(e) {}
     count++;
-    speed = Math.min(200, speed + count * 1.5);
-    if (count < 40) slotTickInterval = setTimeout(tick, 1000/speed);
+    // Gradually slow down
+    delay = Math.min(180, delay + count * 0.8);
+    if (count < 60) slotTickInterval = setTimeout(tick, delay);
   }
   tick();
 }
 function stopSlotTick() {
   if (slotTickInterval) { clearTimeout(slotTickInterval); slotTickInterval = null; }
 }
-
-// Slot: win jingle
 function soundSlotWin() {
   stopSlotTick();
-  const melody = [523, 659, 784, 1046, 784, 1046, 1318];
-  melody.forEach((f, i) => playTone(f, 0.3, 'sine', 0.25, i * 0.12));
-  playTone(261, 0.8, 'sine', 0.15, 0);
+  // Classic slot win - ascending coins jingle
+  const notes = [523, 659, 523, 659, 784, 1046];
+  notes.forEach((f, i) => {
+    playTone(f, 0.25, 'sine', 0.22, i * 0.1);
+  });
+  // Coin rattle noise burst
+  [0.05, 0.12, 0.19, 0.26, 0.33].forEach(d => playNoise(0.04, 0.12, d));
+  // Bass note
+  playTone(261, 0.6, 'sine', 0.12, 0);
 }
 
-// Crate: vinyl scratch
-function soundCrateScratch() {
+// ── CRATE DIG SOUNDS ──
+function soundCrateThud() {
   try {
     const ctx = getAudioCtx();
-    const dur = 0.3;
-    const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < data.length; i++) {
+    // Record sleeve landing on a stack - low thud + paper rustle
+    playTone(65, 0.12, 'sine', 0.6, 0);
+    playTone(48, 0.18, 'sine', 0.4, 0.02);
+    playNoise(0.08, 0.15, 0); // paper rustle
+  } catch(e) {}
+}
+
+function soundCrateFlip() {
+  // Soft whoosh of a record cover sliding past
+  try {
+    const ctx = getAudioCtx();
+    const dur = 0.12;
+    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) {
       const t = i / ctx.sampleRate;
-      data[i] = Math.sin(2 * Math.PI * (800 + 2000 * t) * t) * (1 - t/dur) * (Math.random()*0.3 + 0.7);
+      d[i] = (Math.random()*2-1) * Math.sin(Math.PI * t/dur) * 0.4;
     }
     const src = ctx.createBufferSource();
-    const gain = ctx.createGain();
     const filter = ctx.createBiquadFilter();
-    filter.type = 'highpass'; filter.frequency.value = 300;
+    filter.type = 'lowpass'; filter.frequency.value = 600;
+    const gain = ctx.createGain(); gain.gain.value = 0.12;
     src.buffer = buf; src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-    gain.gain.value = 0.2;
     src.start();
   } catch(e) {}
 }
 
-// Crate: thud when landing
-function soundCrateThud() {
-  playTone(80, 0.15, 'sine', 0.5);
-  playTone(60, 0.2, 'sine', 0.3, 0.05);
-  playNoise(0.1, 0.15, 0);
-}
-
-// Vibe: magical chime
+// ── VIBE REVEAL ──
 function soundVibeReveal() {
-  [880, 1108, 1318, 1760].forEach((f, i) => {
-    playTone(f, 0.8, 'sine', 0.12, i * 0.1);
+  // Warm magical chime sequence
+  [523, 659, 784, 1046, 1318].forEach((f, i) => {
+    playTone(f, 1.2, 'sine', 0.1, i * 0.09);
   });
+  playTone(261, 1.5, 'sine', 0.06, 0);
 }
 
 // Oracle voice
