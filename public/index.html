@@ -341,6 +341,75 @@
     .tab-bar, .detail-overlay, .random-overlay, .settings-panel { max-width: 430px; margin-left: -215px; left: 50%; }
     .fab { right: calc(50% - 215px + 16px); }
   }
+
+  /* ── DESKTOP LAYOUT ── */
+  @media (min-width: 768px) {
+    body { background: var(--bg); }
+
+    /* App container becomes full width */
+    .app-container { max-width: 100%; margin: 0; }
+
+    /* Main layout: fixed left sidebar + scrollable right */
+    #app { display: flex; height: 100vh; overflow: hidden; }
+
+    /* Left sidebar */
+    #desktop-sidebar {
+      width: 280px; min-width: 280px; height: 100vh;
+      overflow-y: auto; overflow-x: hidden;
+      border-right: var(--border-w) solid var(--border);
+      background: var(--card);
+      display: flex; flex-direction: column;
+      scrollbar-width: none; flex-shrink: 0;
+    }
+    #desktop-sidebar::-webkit-scrollbar { display: none; }
+
+    /* Right content area */
+    #desktop-main {
+      flex: 1; height: 100vh; overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+
+    /* Nav goes in sidebar on desktop */
+    .nav { padding: 24px 20px 16px; border-bottom: none; }
+    .nav-title { font-size: 28px; }
+
+    /* Search in sidebar */
+    .search-bar { padding: 0 16px 12px; }
+
+    /* Genre chips in sidebar */
+    .chip-row { padding: 0 16px 12px; flex-wrap: wrap; overflow-x: visible; gap: 6px; }
+
+    /* Stats bar in sidebar */
+    .stats-bar { flex-direction: column; gap: 0; padding: 0; border-radius: 0; background: transparent; margin: 0 16px 12px; border: var(--border-w) solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .stat { padding: 10px 16px; border-bottom: var(--border-w) solid var(--border); }
+    .stat:last-child { border-bottom: none; }
+    .stat-num { font-size: 20px; }
+
+    /* View toggle in sidebar */
+    .view-toggle { margin: 0 16px 16px; }
+
+    /* Collection grid - 3 or 4 columns on desktop */
+    .grid-view { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; padding: 20px; }
+    .list-view { padding: 0 20px; }
+    .record-card { border-radius: calc(var(--radius) + 2px); }
+
+    /* Overlays full screen on desktop */
+    .detail-overlay, .random-overlay, .settings-panel {
+      max-width: 680px !important;
+      margin-left: -340px !important;
+      left: 50% !important;
+      border-radius: 0;
+    }
+
+    /* FAB position */
+    .fab { right: 24px; bottom: 24px; }
+
+    /* Chat and lyrics panels */
+    .chat-panel { max-width: 680px; margin-left: -340px; left: 50%; }
+
+    /* Bigger album art on detail view */
+    .detail-art { max-height: 400px; }
+  }
 </style>
 </head>
 <body>
@@ -548,40 +617,82 @@ async function fetchCollection() {
 }
 
 function renderApp() {
-  document.getElementById('app-content').innerHTML = `
-    <div class="nav">
-      <div>
-        <div class="nav-title">Wax</div>
-        <div class="nav-sub">${releases.length} records</div>
+  const isDesktop = window.innerWidth >= 768;
+  if (isDesktop) {
+    document.getElementById('app-content').innerHTML = `
+      <div id="desktop-sidebar">
+        <div class="nav">
+          <div>
+            <div class="nav-title">Wax</div>
+            <div class="nav-sub">${releases.length} records</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="nav-btn" onclick="openSettings()" title="Themes" style="font-size:18px;">🎨</button>
+            <button class="nav-btn" onclick="openSettings()" aria-label="Settings">&#9881;</button>
+          </div>
+        </div>
+        <div class="search-bar">
+          <div class="search-wrap">
+            <span class="search-icon">&#128269;</span>
+            <input class="search-input" type="search" placeholder="Search records, artists..." id="search-input" oninput="handleSearch(this.value)" value="${searchQuery}">
+          </div>
+        </div>
+        <div class="chip-row" id="chip-row"></div>
+        <div class="stats-bar">
+          <div class="stat"><div class="stat-num">${releases.length}</div><div class="stat-lbl">Records</div></div>
+          <div class="stat"><div class="stat-num">${new Set(releases.map(r=>r.basic_information.artists[0]?.name)).size}</div><div class="stat-lbl">Artists</div></div>
+          <div class="stat"><div class="stat-num">${new Set(releases.map(r=>r.basic_information.genres?.[0]).filter(Boolean)).size}</div><div class="stat-lbl">Genres</div></div>
+        </div>
+        <div class="view-toggle" style="margin:0 16px 16px;">
+          <button class="view-btn ${viewMode==='grid'?'active':''}" onclick="setView('grid')">&#9783; Grid</button>
+          <button class="view-btn ${viewMode==='list'?'active':''}" onclick="setView('list')">&#9776; List</button>
+        </div>
       </div>
-      <div style="display:flex;gap:8px;">
-        <button class="nav-btn" onclick="openSettings()" title="Themes" style="font-size:18px;">🎨</button>
-        <button class="nav-btn" onclick="openSettings()" aria-label="Settings">&#9881;</button>
+      <div id="desktop-main">
+        <div class="collection ${viewMode==='grid'?'grid-view':'list-view'}" id="collection-container"></div>
       </div>
-    </div>
-    <div class="search-bar">
-      <div class="search-wrap">
-        <span class="search-icon">&#128269;</span>
-        <input class="search-input" type="search" placeholder="Search records, artists..." id="search-input" oninput="handleSearch(this.value)" value="${searchQuery}">
+      <button class="fab" onclick="openRandom()" aria-label="Pick random record" title="Pick a random record">&#127922;</button>
+    `;
+  } else {
+    document.getElementById('app-content').innerHTML = `
+      <div class="nav">
+        <div>
+          <div class="nav-title">Wax</div>
+          <div class="nav-sub">${releases.length} records</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="nav-btn" onclick="openSettings()" title="Themes" style="font-size:18px;">🎨</button>
+          <button class="nav-btn" onclick="openSettings()" aria-label="Settings">&#9881;</button>
+        </div>
       </div>
-    </div>
-    <div class="chip-row" id="chip-row"></div>
-    <div class="stats-bar">
-      <div class="stat"><div class="stat-num">${releases.length}</div><div class="stat-lbl">Records</div></div>
-      <div class="stat"><div class="stat-num">${new Set(releases.map(r=>r.basic_information.artists[0]?.name)).size}</div><div class="stat-lbl">Artists</div></div>
-      <div class="stat"><div class="stat-num">${new Set(releases.map(r=>r.basic_information.genres?.[0]).filter(Boolean)).size}</div><div class="stat-lbl">Genres</div></div>
-    </div>
-    <div class="view-toggle">
-      <button class="view-btn ${viewMode==='grid'?'active':''}" onclick="setView('grid')">&#9783; Grid</button>
-      <button class="view-btn ${viewMode==='list'?'active':''}" onclick="setView('list')">&#9776; List</button>
-    </div>
-    <div class="collection ${viewMode===('grid')?'grid-view':'list-view'}" id="collection-container"></div>
-
-    <button class="fab" onclick="openRandom()" aria-label="Pick random record" title="Pick a random record">&#127922;</button>
-  `;
+      <div class="search-bar">
+        <div class="search-wrap">
+          <span class="search-icon">&#128269;</span>
+          <input class="search-input" type="search" placeholder="Search records, artists..." id="search-input" oninput="handleSearch(this.value)" value="${searchQuery}">
+        </div>
+      </div>
+      <div class="chip-row" id="chip-row"></div>
+      <div class="stats-bar">
+        <div class="stat"><div class="stat-num">${releases.length}</div><div class="stat-lbl">Records</div></div>
+        <div class="stat"><div class="stat-num">${new Set(releases.map(r=>r.basic_information.artists[0]?.name)).size}</div><div class="stat-lbl">Artists</div></div>
+        <div class="stat"><div class="stat-num">${new Set(releases.map(r=>r.basic_information.genres?.[0]).filter(Boolean)).size}</div><div class="stat-lbl">Genres</div></div>
+      </div>
+      <div class="view-toggle">
+        <button class="view-btn ${viewMode==='grid'?'active':''}" onclick="setView('grid')">&#9783; Grid</button>
+        <button class="view-btn ${viewMode==='list'?'active':''}" onclick="setView('list')">&#9776; List</button>
+      </div>
+      <div class="collection ${viewMode==='grid'?'grid-view':'list-view'}" id="collection-container"></div>
+      <button class="fab" onclick="openRandom()" aria-label="Pick random record" title="Pick a random record">&#127922;</button>
+    `;
+  }
   renderChips();
   renderCollection();
 }
+
+window.addEventListener('resize', function() {
+  if (releases.length) renderApp();
+});
+
 
 function renderChips() {
   const genres = [...new Set(releases.map(r => r.basic_information.genres?.[0]).filter(Boolean))].sort();
