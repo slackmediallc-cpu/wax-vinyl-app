@@ -453,7 +453,7 @@ let currentFilter = 'all';
 let searchQuery = '';
 let currentRecord = null;
 let randomRecord = null;
-let currentTheme = PRESETS[0];
+let currentTheme = PRESETS.find(p => p.id === 'dark') || PRESETS[0];
 
 // Apply theme to CSS vars
 function applyTheme(t, save) {
