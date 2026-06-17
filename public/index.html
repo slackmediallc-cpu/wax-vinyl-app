@@ -491,10 +491,12 @@ function buildPresetList() {
       + '<span style="font-size:10px;font-weight:700;color:' + p.text + ';font-family:' + p.titleFont + ';">Wax</span>'
       + '<div style="width:18px;height:18px;border-radius:50%;background:' + p.card + ';border:0.5px solid ' + p.border + ';"></div>'
       + '</div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">'
-      + buildMiniCard(p, 'The Dark Side of the Moon', 'Pink Floyd')
-      + buildMiniCard(p, 'Rumours', 'Fleetwood Mac')
-      + '</div>'
+      + '<div style="margin-bottom:6px;border-radius:6px;overflow:hidden;border:0.5px solid ' + p.border + ';background:' + p.card + ';">'
+      + '<img src="https://i.discogs.com/e7Zq5yfCRhO3-J3CIBpMSIpOINqXZ5Y_KeqPXNYyuDs/rs:fit/g:sm/q:90/h:600/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTI0NDkw/NC0xNjkzOTIyNTUz/LTYwODkuanBlZw.jpeg" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;">'
+      + '<div style="padding:6px 8px;">'
+      + '<div style="font-size:9px;font-weight:500;color:' + p.text + ';font-family:' + p.titleFont + ';">The Dark Side of the Moon</div>'
+      + '<div style="font-size:8px;color:' + p.subtext + ';">Pink Floyd · 1973</div>'
+      + '</div></div>'
       + '<div style="display:flex;gap:4px;margin-bottom:8px;">'
       + '<div style="font-size:8px;padding:3px 8px;border-radius:10px;background:' + p.accent + ';color:' + p.accenttext + ';">All</div>'
       + '<div style="font-size:8px;padding:3px 8px;border-radius:10px;background:' + p.card + ';border:0.5px solid ' + p.border + ';color:' + p.subtext + ';">Rock</div>'
@@ -510,17 +512,7 @@ function buildPresetList() {
   });
 }
 
-function buildMiniCard(p, title, artist) {
-  return '<div style="background:' + p.card + ';border-radius:6px;border:0.5px solid ' + p.border + ';overflow:hidden;">'
-    + '<div style="width:100%;aspect-ratio:1;background:' + p.artbg + ';display:flex;align-items:center;justify-content:center;">'
-    + '<div style="width:28px;height:28px;border-radius:50%;background:' + p.disc + ';border:1.5px solid ' + p.border + ';display:flex;align-items:center;justify-content:center;">'
-    + '<div style="width:5px;height:5px;border-radius:50%;background:' + p.bg + ';"></div>'
-    + '</div></div>'
-    + '<div style="padding:5px 6px;">'
-    + '<div style="font-size:8px;font-weight:500;color:' + p.text + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:' + p.titleFont + ';">' + title + '</div>'
-    + '<div style="font-size:7px;color:' + p.subtext + ';font-family:' + p.labelFont + ';">' + artist + '</div>'
-    + '</div></div>';
-}
+
 
 
 function getSK() { return localStorage.getItem('wax_sk') || ''; }
@@ -551,8 +543,9 @@ function renderApp() {
         <div class="nav-sub">${releases.length} records</div>
       </div>
       <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;">
+        <button class="nav-btn" onclick="openSettings()" title="Themes" style="font-size:18px;">🎨</button>
         <button class="nav-btn" onclick="openSettings()" aria-label="Settings">&#9881;</button>
-      </div>
     </div>
     <div class="search-bar">
       <div class="search-wrap">
@@ -573,7 +566,6 @@ function renderApp() {
     <div class="collection ${viewMode===('grid')?'grid-view':'list-view'}" id="collection-container"></div>
     <div class="tab-bar">
       <div class="tab-item active"><span class="ti">&#9679;</span><span>Collection</span></div>
-      <div class="tab-item" onclick="openSettings()"><span class="ti">&#9881;</span><span>Themes</span></div>
     </div>
     <button class="fab" onclick="openRandom()" aria-label="Pick random record" title="Pick a random record">&#127922;</button>
   `;
