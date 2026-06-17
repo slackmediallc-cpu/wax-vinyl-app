@@ -942,6 +942,7 @@ function runCrateDig(c) {
         strip.style.transform = 'translateX('+(center-pos)+'px)';
         const item = document.getElementById('ci'+finalIdx);
         if (item) item.style.borderColor = 'var(--accent)';
+        soundCrateThud();
         setTimeout(() => {
           const bi = randomRecord.basic_information;
           document.getElementById('crate-result').style.opacity='1';
@@ -952,17 +953,17 @@ function runCrateDig(c) {
     }
     pos += speed;
     strip.style.transform = 'translateX('+(center-pos)+'px)';
+    // Scratch sound periodically during fast phase
+    if (phase <= 2 && Math.floor(pos/STEP) !== Math.floor((pos-speed)/STEP)) soundCrateScratch();
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
 }
 
 function runWheel(c) {
-  // Random sample so wheel shows varied records, not just first alphabetically
   const poolSize = Math.min(12, releases.length);
   const shuffled = [...releases].sort(() => Math.random()-0.5);
   const pool = shuffled.slice(0, poolSize);
-  // Make sure randomRecord is in the pool
   const existingIdx = pool.findIndex(r => r === randomRecord);
   if (existingIdx === -1) pool[Math.floor(Math.random()*poolSize)] = randomRecord;
   const size = 280, cx=size/2, cy=size/2, r=120;
@@ -970,10 +971,16 @@ function runWheel(c) {
   const colors=['#c47f1a','#1a6cc4','#3a8a4a','#a03050','#c040e0','#7a5830','#1a8888','#884a1a','#888','#aa5500','#005588','#558800'];
   let rot=0, spinning=false;
   c.innerHTML=`<p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Tap to spin</p>
-    <div style="position:relative;width:${size}px;height:${size}px;">
+    <div style="position:relative;width:${size}px;height:${size+36}px;">
       <canvas id="wc" width="${size}" height="${size}" style="cursor:pointer;border-radius:50%;box-shadow:0 0 30px rgba(0,0,0,0.5);" onclick="doSpin()"></canvas>
       <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid #111;z-index:2;"></div>
-      <div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:20px;z-index:3;">▼</div>
+      <!-- Ticker/clicker at bottom -->
+      <div style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);z-index:3;display:flex;flex-direction:column;align-items:center;">
+        <svg id="wheel-ticker" width="32" height="32" viewBox="0 0 32 32">
+          <polygon points="16,4 28,28 4,28" fill="#c47f1a" stroke="#fff" stroke-width="1.5" style="filter:drop-shadow(0 0 4px #c47f1a);transform-origin:16px 28px;"/>
+        </svg>
+        <div style="width:24px;height:8px;background:linear-gradient(180deg,#3a2c18,#1a1410);border-radius:0 0 6px 6px;border:1px solid #c47f1a;margin-top:-2px;"></div>
+      </div>
     </div>
     <div id="wheel-result" style="opacity:0;transition:opacity 0.5s;text-align:center;margin-top:8px;"></div>`;
   function draw(a){
@@ -996,12 +1003,32 @@ function runWheel(c) {
     const tgt=-(tidx*sa+sa/2)+Math.PI/2;
     const total=5*2*Math.PI+tgt-(rot%(2*Math.PI));
     const dur=4000, t0=performance.now(), r0=rot;
+    let lastTickAngle = 0;
     function fr(now){
       const p=Math.min((now-t0)/dur,1), e=1-Math.pow(1-p,4);
       rot=r0+total*e; draw(rot);
+
+      // Tick sound + ticker animation when crossing a segment boundary
+      const tickEvery = sa; // one tick per segment
+      const currentTick = Math.floor(rot / tickEvery);
+      if (currentTick !== lastTickAngle) {
+        lastTickAngle = currentTick;
+        soundWheelTick();
+        // Animate ticker
+        const ticker = document.getElementById('wheel-ticker');
+        if (ticker) {
+          const speed = total * (1-e) / dur; // approximate current angular speed
+          const deflect = Math.min(30, Math.abs(speed) * 8);
+          ticker.style.transform = 'rotate('+deflect+'deg)';
+          ticker.style.transformOrigin = '16px 28px';
+          setTimeout(() => { if(ticker) ticker.style.transform = 'rotate(0deg)'; ticker.style.transition='transform 0.15s'; }, 80);
+        }
+      }
+
       if(p<1){requestAnimationFrame(fr);}
       else{
         spinning=false;
+        soundWheelTick(); soundWheelTick();
         const bi=randomRecord.basic_information;
         document.getElementById('wheel-result').style.opacity='1';
         document.getElementById('wheel-result').innerHTML='<p style="font-size:16px;font-weight:700;color:var(--text);margin:4px 0 2px;">'+escHtml(bi.title)+'</p><p style="font-size:13px;color:var(--accent);margin:0 0 8px;">'+escHtml(bi.artists[0]?.name||'')+'</p>'+pickerActions();
@@ -1090,9 +1117,11 @@ function runSlotMachine(c) {
   window.pullLever = function() {
     if (leverPulled) return;
     leverPulled = true;
+    soundLeverPull();
     const lever = document.getElementById('slot-lever');
     if (lever) lever.style.animation = 'leverPull 0.5s ease-in-out forwards';
     document.getElementById('slot-status').textContent = 'SPINNING...';
+    setTimeout(() => startSlotTick(), 300);
 
     [[0,'slot-a',artists,bi.artists[0]?.name||'?'],[1,'slot-b',albums,bi.title],[2,'slot-c',years,String(bi.year||'?')]].forEach(([delay,id,pool,final])=>{
       const el=document.getElementById(id); if(!el)return;
@@ -1104,6 +1133,7 @@ function runSlotMachine(c) {
     });
 
     setTimeout(()=>{
+      soundSlotWin();
       document.getElementById('slot-status').textContent = '🎰 WINNER!';
       const art=bi.cover_image||bi.thumb||'';
       const resultEl = document.getElementById('slot-result');
@@ -1121,243 +1151,145 @@ function runSlotMachine(c) {
 function runOracle(c) {
   const bi = randomRecord.basic_information;
   const art = bi.cover_image || bi.thumb || '';
+  const slogan = ORACLE_SLOGANS[Math.floor(Math.random() * ORACLE_SLOGANS.length)];
+
+  soundOracle();
 
   c.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;width:100%;max-width:340px;">
-      <!-- Oracle scene SVG -->
-      <svg viewBox="0 0 320 280" width="320" height="280" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+    <div style="display:flex;flex-direction:column;align-items:center;width:100%;max-width:340px;gap:0;">
+      <p style="font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:12px;">The Oracle Speaks</p>
+
+      <!-- Big crystal ball scene -->
+      <svg viewBox="0 0 300 300" width="290" height="290" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <radialGradient id="bgGrad" cx="50%" cy="60%" r="60%">
-            <stop offset="0%" stop-color="#1a0a2e"/>
-            <stop offset="100%" stop-color="#050208"/>
+          <radialGradient id="og1" cx="38%" cy="32%" r="65%">
+            <stop offset="0%" stop-color="#d0eeff" stop-opacity="0.95"/>
+            <stop offset="30%" stop-color="#6090d8" stop-opacity="0.8"/>
+            <stop offset="70%" stop-color="#102060" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="#050a20" stop-opacity="0.98"/>
           </radialGradient>
-          <radialGradient id="ballGrad" cx="38%" cy="35%" r="60%">
-            <stop offset="0%" stop-color="#c8e8ff" stop-opacity="0.9"/>
-            <stop offset="40%" stop-color="#6090d0" stop-opacity="0.7"/>
-            <stop offset="100%" stop-color="#0a1a3a" stop-opacity="0.95"/>
+          <radialGradient id="og2" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#4070ff" stop-opacity="0.35"/>
+            <stop offset="100%" stop-color="#4070ff" stop-opacity="0"/>
           </radialGradient>
-          <radialGradient id="ballGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stop-color="#4080ff" stop-opacity="0.3"/>
-            <stop offset="100%" stop-color="#4080ff" stop-opacity="0"/>
+          <radialGradient id="tableGrad" cx="50%" cy="30%" r="70%">
+            <stop offset="0%" stop-color="#2a1040"/>
+            <stop offset="100%" stop-color="#0a0418"/>
           </radialGradient>
-          <radialGradient id="smokeGrad" cx="50%" cy="100%" r="60%">
-            <stop offset="0%" stop-color="#8080ff" stop-opacity="0.4"/>
-            <stop offset="100%" stop-color="#8080ff" stop-opacity="0"/>
-          </radialGradient>
-          <clipPath id="ballClip">
-            <circle cx="160" cy="148" r="54"/>
-          </clipPath>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="3" result="blur"/>
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          <clipPath id="oc1"><circle cx="150" cy="138" r="108"/></clipPath>
+          <filter id="og3" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="8"/>
           </filter>
-          <filter id="softGlow">
-            <feGaussianBlur stdDeviation="6" result="blur"/>
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          <filter id="og4" x="-10%" y="-10%" width="120%" height="120%">
+            <feGaussianBlur stdDeviation="3"/>
           </filter>
         </defs>
 
-        <!-- Background -->
-        <rect width="320" height="280" fill="url(#bgGrad)"/>
-
+        <!-- Deep space background -->
+        <rect width="300" height="300" fill="#04020e"/>
         <!-- Stars -->
-        ${Array(18).fill(0).map((_,i)=>{
-          const x=10+Math.sin(i*2.3)*140+150, y=10+Math.cos(i*1.7)*80+40, r=i%3===0?1.5:0.8;
-          return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="white" opacity="${0.3+Math.random()*0.5}"/>`;
+        ${Array(24).fill(0).map((_,i) => {
+          const x = (i*47+13)%290+5, y = (i*83+7)%260+10, r = i%4===0?1.2:0.6;
+          return `<circle cx="${x}" cy="${y}" r="${r}" fill="white" opacity="${0.2+((i*17)%10)*0.06}"/>`;
         }).join('')}
 
-        <!-- Curtains -->
-        <path d="M0,0 Q30,50 10,280 L0,280 Z" fill="#1a0a30" opacity="0.8"/>
-        <path d="M320,0 Q290,50 310,280 L320,280 Z" fill="#1a0a30" opacity="0.8"/>
-        <path d="M0,0 Q40,30 20,100 Q10,160 30,280 L0,280 Z" fill="#2a1040" opacity="0.6"/>
-        <path d="M320,0 Q280,30 300,100 Q310,160 290,280 L320,280 Z" fill="#2a1040" opacity="0.6"/>
+        <!-- Outer glow aura -->
+        <circle cx="150" cy="138" r="130" fill="url(#og2)" filter="url(#og3)"/>
 
-        <!-- Table -->
-        <ellipse cx="160" cy="228" rx="110" ry="22" fill="#1a0a20" stroke="#3a1a50" stroke-width="1"/>
-        <rect x="50" y="222" width="220" height="10" rx="4" fill="#120818"/>
-        <!-- Table cloth drape -->
-        <path d="M50,228 Q90,240 160,242 Q230,240 270,228 L270,234 Q230,246 160,248 Q90,246 50,234 Z" fill="#1e0e2e" opacity="0.8"/>
-
-        <!-- Crystal ball base/stand -->
-        <ellipse cx="160" cy="206" rx="38" ry="10" fill="#2a1540" stroke="#5a2a80" stroke-width="1.5"/>
-        <path d="M130,206 Q130,214 138,218 L182,218 Q190,214 190,206 Z" fill="#1a0a2e" stroke="#4a1a60" stroke-width="1"/>
-        <!-- Stand gems -->
-        <circle cx="148" cy="212" r="3" fill="#c040e0" opacity="0.8"/>
-        <circle cx="160" cy="215" r="3" fill="#8040ff" opacity="0.8"/>
-        <circle cx="172" cy="212" r="3" fill="#c040e0" opacity="0.8"/>
-
-        <!-- Crystal ball glow aura -->
-        <circle cx="160" cy="148" r="72" fill="url(#ballGlow)" opacity="0.6"/>
-        <circle cx="160" cy="148" r="80" fill="none" stroke="#4060ff" stroke-width="0.5" opacity="0.3"/>
+        <!-- Ball shadow on table -->
+        <ellipse cx="150" cy="265" rx="90" ry="14" fill="#000" opacity="0.5"/>
 
         <!-- Crystal ball -->
-        <circle cx="160" cy="148" r="58" fill="url(#ballGrad)" stroke="#a0c0ff" stroke-width="1.5" opacity="0.95"/>
+        <circle cx="150" cy="138" r="112" fill="url(#og1)" stroke="#a8c8ff" stroke-width="1.5" opacity="0.95"/>
 
-        <!-- Album art inside ball (revealed later) -->
-        <g id="oracle-art-group" opacity="0" clip-path="url(#ballClip)">
-          <image id="oracle-art-img" x="106" y="94" width="108" height="108" preserveAspectRatio="xMidYMid slice"/>
-          <!-- Art overlay tint -->
-          <circle cx="160" cy="148" r="54" fill="#0a1a3a" opacity="0.25"/>
+        <!-- Album art inside ball (hidden initially) -->
+        <g id="oracle-art-grp" opacity="0" clip-path="url(#oc1)" style="transition:opacity 1.8s;">
+          <image id="oracle-art-img" x="42" y="30" width="216" height="216" preserveAspectRatio="xMidYMid slice"/>
+          <circle cx="150" cy="138" r="112" fill="#0a1840" opacity="0.4"/>
         </g>
 
         <!-- Smoke wisps inside ball -->
-        <g clip-path="url(#ballClip)" opacity="0.6">
-          <ellipse cx="145" cy="170" rx="30" ry="12" fill="#6080ff" opacity="0.2">
-            <animate attributeName="cy" values="170;160;170" dur="3s" repeatCount="indefinite"/>
-            <animate attributeName="opacity" values="0.2;0.4;0.2" dur="3s" repeatCount="indefinite"/>
+        <g clip-path="url(#oc1)">
+          <ellipse cx="130" cy="180" rx="55" ry="20" fill="#5060ff" opacity="0.12">
+            <animate attributeName="cy" values="180;158;180" dur="4s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.12;0.22;0.12" dur="4s" repeatCount="indefinite"/>
           </ellipse>
-          <ellipse cx="175" cy="155" rx="22" ry="8" fill="#8060ff" opacity="0.15">
-            <animate attributeName="cy" values="155;145;155" dur="2.5s" repeatCount="indefinite"/>
+          <ellipse cx="170" cy="160" rx="40" ry="14" fill="#8040ff" opacity="0.1">
+            <animate attributeName="cy" values="160;140;160" dur="3s" repeatCount="indefinite"/>
           </ellipse>
-          <ellipse cx="155" cy="140" rx="18" ry="6" fill="#a080ff" opacity="0.1">
-            <animate attributeName="cy" values="140;130;140" dur="2s" repeatCount="indefinite"/>
-          </ellipse>
-        </g>
-
-        <!-- Ball shine -->
-        <ellipse cx="143" cy="120" rx="18" ry="10" fill="white" opacity="0.12" transform="rotate(-30,143,120)"/>
-        <ellipse cx="139" cy="116" rx="8" ry="5" fill="white" opacity="0.2" transform="rotate(-30,139,116)"/>
-
-        <!-- Ball bottom smoke rising -->
-        <g id="oracle-smoke">
-          <ellipse cx="150" cy="205" rx="16" ry="6" fill="#8060c0" opacity="0.0">
-            <animate attributeName="cy" values="205;185;165" dur="2.5s" repeatCount="indefinite"/>
-            <animate attributeName="opacity" values="0.3;0.15;0" dur="2.5s" repeatCount="indefinite"/>
-            <animate attributeName="rx" values="16;22;28" dur="2.5s" repeatCount="indefinite"/>
-          </ellipse>
-          <ellipse cx="170" cy="205" rx="12" ry="5" fill="#6040a0" opacity="0.0">
-            <animate attributeName="cy" values="205;180;158" dur="2s" begin="0.8s" repeatCount="indefinite"/>
-            <animate attributeName="opacity" values="0.25;0.1;0" dur="2s" begin="0.8s" repeatCount="indefinite"/>
-            <animate attributeName="rx" values="12;18;24" dur="2s" begin="0.8s" repeatCount="indefinite"/>
+          <ellipse cx="145" cy="200" rx="35" ry="10" fill="#4080ff" opacity="0.08">
+            <animate attributeName="cy" values="200;175;200" dur="5s" repeatCount="indefinite"/>
           </ellipse>
         </g>
 
-        <!-- Oracle woman body -->
-        <!-- Robe/dress -->
-        <path d="M108,272 Q118,240 124,220 Q128,205 132,190 Q138,178 148,172 Q155,168 160,168 Q165,168 172,172 Q182,178 188,190 Q192,205 196,220 Q202,240 212,272 Z" fill="#1e0840" stroke="#3a1060" stroke-width="1"/>
-        <!-- Robe sheen -->
-        <path d="M125,222 Q130,200 136,184 Q142,175 150,171" fill="none" stroke="#4a20a0" stroke-width="1" opacity="0.5"/>
-        <!-- Robe bottom details -->
-        <path d="M108,272 Q130,260 160,258 Q190,260 212,272" fill="#160630" stroke="#2a0840" stroke-width="0.5"/>
+        <!-- Ball shine highlights -->
+        <ellipse cx="115" cy="88" rx="32" ry="18" fill="white" opacity="0.09" transform="rotate(-30,115,88)"/>
+        <ellipse cx="108" cy="82" rx="14" ry="8" fill="white" opacity="0.16" transform="rotate(-30,108,82)"/>
+        <ellipse cx="104" cy="79" rx="6" ry="3" fill="white" opacity="0.28" transform="rotate(-30,104,79)"/>
 
-        <!-- Arms -->
-        <path d="M148,172 Q130,178 118,192 Q112,200 114,210" stroke="#c8956a" stroke-width="8" stroke-linecap="round" fill="none"/>
-        <path d="M172,172 Q190,178 202,192 Q208,200 206,210" stroke="#c8956a" stroke-width="8" stroke-linecap="round" fill="none"/>
-        <!-- Sleeves -->
-        <path d="M148,172 Q130,178 118,192 Q112,200 114,210" stroke="#2a0e60" stroke-width="12" stroke-linecap="round" fill="none" opacity="0.7"/>
-        <path d="M172,172 Q190,178 202,192 Q208,200 206,210" stroke="#2a0e60" stroke-width="12" stroke-linecap="round" fill="none" opacity="0.7"/>
-
-        <!-- Hands near ball -->
-        <ellipse cx="118" cy="213" rx="10" ry="7" fill="#c8956a" transform="rotate(-20,118,213)"/>
-        <ellipse cx="202" cy="213" rx="10" ry="7" fill="#c8956a" transform="rotate(20,202,213)"/>
-
-        <!-- Neck -->
-        <rect x="155" y="130" width="10" height="18" rx="5" fill="#c8956a"/>
-
-        <!-- Head -->
-        <ellipse cx="160" cy="118" rx="22" ry="26" fill="#c8956a"/>
-
-        <!-- Hair -->
-        <path d="M138,108 Q136,90 140,78 Q148,62 160,60 Q172,62 180,78 Q184,90 182,108 Q176,98 172,92 Q166,80 160,78 Q154,80 148,92 Q144,98 138,108 Z" fill="#1a0808"/>
-        <!-- Hair sides flowing down -->
-        <path d="M138,108 Q128,120 126,140 Q124,158 128,172 Q136,178 140,172 Q138,158 140,140 Q142,122 148,112 Z" fill="#1a0808"/>
-        <path d="M182,108 Q192,120 194,140 Q196,158 192,172 Q184,178 180,172 Q182,158 180,140 Q178,122 172,112 Z" fill="#1a0808"/>
-        <!-- Hair highlight -->
-        <path d="M150,68 Q158,64 166,68" stroke="#3a1818" stroke-width="2" fill="none" opacity="0.6"/>
-
-        <!-- Face features -->
-        <!-- Eyes -->
-        <ellipse cx="153" cy="116" rx="4" ry="4.5" fill="#0a0418"/>
-        <ellipse cx="167" cy="116" rx="4" ry="4.5" fill="#0a0418"/>
-        <circle cx="154.5" cy="115" r="1.2" fill="white" opacity="0.6"/>
-        <circle cx="168.5" cy="115" r="1.2" fill="white" opacity="0.6"/>
-        <!-- Eye glow (oracle magic) -->
-        <ellipse cx="153" cy="116" rx="5" ry="5.5" fill="#8040ff" opacity="0.15"/>
-        <ellipse cx="167" cy="116" rx="5" ry="5.5" fill="#8040ff" opacity="0.15"/>
-        <!-- Eyebrows -->
-        <path d="M149,110 Q153,107 157,109" stroke="#1a0808" stroke-width="1.5" fill="none"/>
-        <path d="M163,109 Q167,107 171,110" stroke="#1a0808" stroke-width="1.5" fill="none"/>
-        <!-- Nose -->
-        <path d="M159,120 Q157,126 158,128 Q160,130 162,128 Q163,126 161,120" fill="#b87858" opacity="0.5"/>
-        <!-- Lips -->
-        <path d="M155,132 Q160,135 165,132" stroke="#a04040" stroke-width="1.5" fill="none"/>
-        <path d="M156,132 Q160,130 164,132" fill="#c05050" opacity="0.6"/>
-
-        <!-- Headdress / crown -->
-        <path d="M138,100 Q140,88 148,82 Q154,78 160,77 Q166,78 172,82 Q180,88 182,100" fill="#2a0e60" stroke="#6a2ea0" stroke-width="1"/>
-        <!-- Crown gems -->
-        <polygon points="160,72 163,80 157,80" fill="#c040e0"/>
-        <polygon points="148,78 151,86 145,86" fill="#8040ff"/>
-        <polygon points="172,78 175,86 169,86" fill="#8040ff"/>
-        <!-- Crown jewels -->
-        <circle cx="160" cy="73" r="3.5" fill="#e060ff" stroke="#c040e0" stroke-width="0.5"/>
-        <circle cx="148" cy="79" r="2.5" fill="#a060ff"/>
-        <circle cx="172" cy="79" r="2.5" fill="#a060ff"/>
-
-        <!-- Mystical jewelry -->
-        <circle cx="160" cy="148" r="2" fill="#c040e0" opacity="0.8" filter="url(#glow)"/>
-
-        <!-- Candles on table sides -->
-        <rect x="68" y="204" width="8" height="24" rx="3" fill="#f5e8b0"/>
-        <ellipse cx="72" cy="204" rx="4" ry="3" fill="#f5e8b0"/>
-        <ellipse cx="72" cy="203" rx="2" ry="5" fill="#ff8040" opacity="0.9"/>
-        <ellipse cx="72" cy="200" rx="1" ry="3" fill="#ffcc80" opacity="0.7"/>
-
-        <rect x="244" y="204" width="8" height="24" rx="3" fill="#f5e8b0"/>
-        <ellipse cx="248" cy="204" rx="4" ry="3" fill="#f5e8b0"/>
-        <ellipse cx="248" cy="203" rx="2" ry="5" fill="#ff8040" opacity="0.9"/>
-        <ellipse cx="248" cy="200" rx="1" ry="3" fill="#ffcc80" opacity="0.7"/>
-
-        <!-- Candle glow -->
-        <circle cx="72" cy="200" r="12" fill="#ff8040" opacity="0.08"/>
-        <circle cx="248" cy="200" r="12" fill="#ff8040" opacity="0.08"/>
-
-        <!-- Sparkle stars around ball -->
-        <g filter="url(#glow)" opacity="0.7">
-          <path d="M100,130 L102,126 L104,130 L108,132 L104,134 L102,138 L100,134 L96,132 Z" fill="#c0a0ff"/>
-          <path d="M215,118 L217,115 L219,118 L222,120 L219,122 L217,125 L215,122 L212,120 Z" fill="#a0c0ff"/>
-          <path d="M108,170 L109,167 L110,170 L113,171 L110,172 L109,175 L108,172 L105,171 Z" fill="#e0c0ff" opacity="0.6"/>
+        <!-- Subtle sparkles around ball -->
+        <g opacity="0.6">
+          <path d="M38,80 L40,74 L42,80 L48,82 L42,84 L40,90 L38,84 L32,82 Z" fill="#c0a0ff">
+            <animate attributeName="opacity" values="0.6;0.1;0.6" dur="2.1s" repeatCount="indefinite"/>
+          </path>
+          <path d="M258,60 L260,55 L262,60 L267,62 L262,64 L260,69 L258,64 L253,62 Z" fill="#a0c0ff">
+            <animate attributeName="opacity" values="0.5;0.1;0.5" dur="1.7s" repeatCount="indefinite"/>
+          </path>
+          <path d="M42,195 L44,191 L46,195 L50,197 L46,199 L44,203 L42,199 L38,197 Z" fill="#e0c0ff">
+            <animate attributeName="opacity" values="0.4;0.1;0.4" dur="2.8s" repeatCount="indefinite"/>
+          </path>
+          <path d="M255,185 L256,182 L257,185 L260,186 L257,187 L256,190 L255,187 L252,186 Z" fill="#c0e0ff">
+            <animate attributeName="opacity" values="0.5;0.1;0.5" dur="2.3s" repeatCount="indefinite"/>
+          </path>
         </g>
+
+        <!-- Ball stand base -->
+        <ellipse cx="150" cy="254" rx="72" ry="15" fill="url(#tableGrad)" stroke="#3a1a60" stroke-width="1.5"/>
+        <path d="M95,254 Q100,264 110,268 L190,268 Q200,264 205,254 Z" fill="#0e0620" stroke="#2a1040" stroke-width="1"/>
+        <!-- Stand jewels -->
+        <circle cx="136" cy="261" r="4" fill="#c040e0" opacity="0.9"/>
+        <circle cx="150" cy="264" r="4" fill="#8040ff" opacity="0.9"/>
+        <circle cx="164" cy="261" r="4" fill="#c040e0" opacity="0.9"/>
       </svg>
 
-      <!-- Result area -->
-      <div id="oracle-result" style="opacity:0;transition:opacity 1s;text-align:center;width:100%;padding:0 16px;margin-top:-8px;">
-        <p style="font-size:11px;color:rgba(255,255,255,0.35);font-style:italic;margin-bottom:6px;">The Oracle has seen your fate...</p>
-        <p id="oracle-title" style="font-size:18px;font-weight:700;color:var(--text);margin:0 0 3px;"></p>
-        <p id="oracle-artist" style="font-size:13px;color:var(--accent);margin:0 0 12px;"></p>
+      <!-- Slogan and result -->
+      <div id="oracle-result" style="opacity:0;transition:opacity 1.4s;text-align:center;padding:0 20px;margin-top:-8px;width:100%;">
+        <p style="font-size:12px;color:rgba(180,160,255,0.7);font-style:italic;margin-bottom:10px;line-height:1.5;">"${escHtml(slogan)}"</p>
+        <p id="oracle-rec-title" style="font-size:20px;font-weight:700;color:var(--text);margin:0 0 3px;"></p>
+        <p id="oracle-rec-artist" style="font-size:14px;color:var(--accent);margin:0 0 14px;"></p>
         <div id="oracle-actions"></div>
       </div>
     </div>
   `;
 
-  // After 2 seconds, materialize album art in ball and reveal result
+  // Phase 1 (2.5s): ball glows, smoke animates
+  // Phase 2 (4s): art materializes in ball
+  // Phase 3 (5.5s): text fades in, voice speaks
+
   setTimeout(() => {
-    // Load art into ball
+    soundOracleReveal();
     if (art && art !== 'https://st.discogs.com/') {
       const img = document.getElementById('oracle-art-img');
-      if (img) img.setAttribute('href', art);
-      const artGroup = document.getElementById('oracle-art-group');
-      if (artGroup) {
-        artGroup.style.transition = 'opacity 1.2s';
-        artGroup.style.opacity = '1';
-      }
+      if (img) { img.setAttribute('href', art); img.setAttribute('xlink:href', art); }
+      const grp = document.getElementById('oracle-art-grp');
+      if (grp) grp.style.opacity = '1';
     }
-    // Reveal text
+  }, 2600);
+
+  setTimeout(() => {
     const el = document.getElementById('oracle-result');
-    const titleEl = document.getElementById('oracle-title');
-    const artistEl = document.getElementById('oracle-artist');
+    const titleEl = document.getElementById('oracle-rec-title');
+    const artistEl = document.getElementById('oracle-rec-artist');
     const actionsEl = document.getElementById('oracle-actions');
     if (titleEl) titleEl.textContent = bi.title;
     if (artistEl) artistEl.textContent = bi.artists[0]?.name || '';
     if (actionsEl) actionsEl.innerHTML = pickerActions();
     if (el) el.style.opacity = '1';
-  }, 2400);
+    // Speak after a short pause
+    setTimeout(() => speakOracle(slogan + '... ' + bi.title + ', by ' + (bi.artists[0]?.name || '')), 600);
+  }, 5000);
 }
 
-
-
-
-// ── VIBE PICKER ──
 const VIBE_MAP = {
   mood: {
     'Energetic':   { genres:['Rock','Hip Hop','Electronic','Funk / Soul','Pop'], styles:['Hard Rock','Dance','Punk','Funk'] },
@@ -1375,15 +1307,15 @@ const VIBE_MAP = {
     'Late night':  { genres:['Electronic','Jazz','Hip Hop'], styles:['Ambient','Trip Hop','Neo Soul','Downtempo'] },
   },
   setting: {
-    'Solo/headphones': { genres:['Rock','Jazz','Electronic','Classical','Hip Hop'], styles:['Progressive Rock','Art Rock','Ambient','Experimental'] },
-    'Party':           { genres:['Electronic','Funk / Soul','Hip Hop','Pop','Rock'], styles:['Disco','Funk','House','Dance'] },
-    'Cooking':         { genres:['Jazz','Funk / Soul','Pop','Latin'], styles:['Soul','Funk','Bossa Nova','Vocal'] },
-    'Working':         { genres:['Electronic','Classical','Jazz'], styles:['Ambient','Minimal','Lo-Fi','Downtempo'] },
-    'Driving':         { genres:['Rock','Hip Hop','Electronic','Pop'], styles:['Hard Rock','Classic Rock','Synth-pop'] },
+    'Solo':           { genres:['Rock','Jazz','Electronic','Classical','Hip Hop'], styles:['Progressive Rock','Art Rock','Experimental','Singer-Songwriter'] },
+    'Headphones':     { genres:['Electronic','Hip Hop','Jazz','Classical'], styles:['Ambient','Trip Hop','Experimental','Neo-Classical','Downtempo'] },
+    'Party':          { genres:['Electronic','Funk / Soul','Hip Hop','Pop','Rock'], styles:['Disco','Funk','House','Dance'] },
+    'Cooking':        { genres:['Jazz','Funk / Soul','Pop','Latin'], styles:['Soul','Funk','Bossa Nova','Vocal'] },
+    'Working':        { genres:['Electronic','Classical','Jazz'], styles:['Ambient','Minimal','Lo-Fi','Downtempo'] },
+    'Getting ready':  { genres:['Pop','Hip Hop','Electronic','Funk / Soul'], styles:['Dance','Funk','Synth-pop','Disco'] },
+    'Winding down':   { genres:['Jazz','Classical','Folk, World, & Country','Blues'], styles:['Ambient','Soul','Acoustic','Singer-Songwriter','Bossa Nova'] },
   },
 };
-
-let vibeSelections = { mood: null, time: null, setting: null, genre: null };
 
 function runVibePicker(c) {
   // Auto-detect time of day
@@ -1480,6 +1412,7 @@ function runVibePicker(c) {
       ? pool[Math.floor(Math.random() * Math.min(pool.length, 10))]
       : releases[Math.floor(Math.random() * releases.length)];
     randomRecord = pick.record;
+    soundVibeReveal();
     showVibeResult(pick, pool.length);
   };
 
@@ -1663,6 +1596,192 @@ async function init() {
     }
   }
 }
+
+
+// ── SOUND ENGINE ──
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  return audioCtx;
+}
+
+function playTone(freq, dur, type='sine', vol=0.3, delay=0) {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+    gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+    gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + delay + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+    osc.start(ctx.currentTime + delay);
+    osc.stop(ctx.currentTime + delay + dur + 0.05);
+  } catch(e) {}
+}
+
+function playNoise(dur, vol=0.15, delay=0) {
+  try {
+    const ctx = getAudioCtx();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random()*2-1);
+    const src = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+    src.buffer = buf;
+    filter.type = 'bandpass';
+    filter.frequency.value = 800;
+    src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+    gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+    src.start(ctx.currentTime + delay);
+  } catch(e) {}
+}
+
+// Oracle: deep mystical chime sequence
+function soundOracle() {
+  [220, 277, 330, 415, 523].forEach((f, i) => {
+    playTone(f, 2.5, 'sine', 0.15, i * 0.4);
+  });
+  // Low rumble
+  playTone(55, 3, 'sawtooth', 0.04, 0);
+  playTone(82, 2, 'sine', 0.08, 0.8);
+}
+
+// Oracle reveal: ethereal shimmer
+function soundOracleReveal() {
+  [1046, 1318, 1568, 2093].forEach((f, i) => {
+    playTone(f, 1.5, 'sine', 0.06, i * 0.15);
+  });
+  playTone(523, 2, 'sine', 0.1, 0);
+}
+
+// Wheel tick - single click sound
+function soundWheelTick() {
+  try {
+    const ctx = getAudioCtx();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.04, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      data[i] = (Math.random()*2-1) * Math.exp(-i / (ctx.sampleRate * 0.008));
+    }
+    const src = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    src.buffer = buf; src.connect(gain); gain.connect(ctx.destination);
+    gain.gain.value = 0.4;
+    src.start();
+  } catch(e) {}
+}
+
+// Slot: lever click
+function soundLeverPull() {
+  playTone(180, 0.08, 'square', 0.3);
+  playTone(120, 0.12, 'square', 0.2, 0.06);
+  playNoise(0.1, 0.2, 0.04);
+}
+
+// Slot: spinning tick (rapid)
+let slotTickInterval = null;
+function startSlotTick() {
+  let speed = 60, count = 0;
+  function tick() {
+    playTone(800 + Math.random()*400, 0.02, 'square', 0.08);
+    count++;
+    speed = Math.min(200, speed + count * 1.5);
+    if (count < 40) slotTickInterval = setTimeout(tick, 1000/speed);
+  }
+  tick();
+}
+function stopSlotTick() {
+  if (slotTickInterval) { clearTimeout(slotTickInterval); slotTickInterval = null; }
+}
+
+// Slot: win jingle
+function soundSlotWin() {
+  stopSlotTick();
+  const melody = [523, 659, 784, 1046, 784, 1046, 1318];
+  melody.forEach((f, i) => playTone(f, 0.3, 'sine', 0.25, i * 0.12));
+  playTone(261, 0.8, 'sine', 0.15, 0);
+}
+
+// Crate: vinyl scratch
+function soundCrateScratch() {
+  try {
+    const ctx = getAudioCtx();
+    const dur = 0.3;
+    const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      const t = i / ctx.sampleRate;
+      data[i] = Math.sin(2 * Math.PI * (800 + 2000 * t) * t) * (1 - t/dur) * (Math.random()*0.3 + 0.7);
+    }
+    const src = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'highpass'; filter.frequency.value = 300;
+    src.buffer = buf; src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+    gain.gain.value = 0.2;
+    src.start();
+  } catch(e) {}
+}
+
+// Crate: thud when landing
+function soundCrateThud() {
+  playTone(80, 0.15, 'sine', 0.5);
+  playTone(60, 0.2, 'sine', 0.3, 0.05);
+  playNoise(0.1, 0.15, 0);
+}
+
+// Vibe: magical chime
+function soundVibeReveal() {
+  [880, 1108, 1318, 1760].forEach((f, i) => {
+    playTone(f, 0.8, 'sine', 0.12, i * 0.1);
+  });
+}
+
+// Oracle voice
+function speakOracle(text) {
+  try {
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = 0.72;
+    utt.pitch = 0.6;
+    utt.volume = 0.9;
+    // Pick best available voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v =>
+      v.name.includes('Samantha') || v.name.includes('Karen') ||
+      v.name.includes('Moira') || v.name.includes('Tessa') ||
+      v.name.includes('Fiona') || (v.lang.startsWith('en') && v.name.toLowerCase().includes('female'))
+    ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+    if (preferred) utt.voice = preferred;
+    window.speechSynthesis.speak(utt);
+  } catch(e) {}
+}
+
+const ORACLE_SLOGANS = [
+  "The spirits have chosen. Do not question them.",
+  "The vinyl gods have spoken, and they're feeling dramatic tonight.",
+  "I gazed into the infinite. This is what came back.",
+  "The cosmos aligned specifically to recommend this record.",
+  "Ancient forces beyond your comprehension have selected this.",
+  "The mists have parted. Your fate is clear.",
+  "I have seen many futures. In all of them, you play this record.",
+  "The stars were consulted. They were very confident.",
+  "What you seek has been seeking you.",
+  "The oracle does not make mistakes. Place it on the turntable.",
+  "This record chose you, not the other way around.",
+  "The crystal ball has never been more certain.",
+  "Destiny smells like vinyl tonight.",
+  "From the great beyond, this record calls your name.",
+  "The spirits debated briefly. There was consensus.",
+  "Even the skeptics among you must bow to this selection.",
+  "Your evening has been decided. The oracle has spoken.",
+  "Some things are written in the stars. This is one of them.",
+];
 
 applyTheme(currentTheme);
 init();
