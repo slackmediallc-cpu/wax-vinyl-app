@@ -745,22 +745,42 @@ async function openDetail(idx) {
   }
 }
 
+function selectArtwork(el) {
+  const strip = document.getElementById('art-strip');
+  if (!strip) return;
+  const imgs = strip.querySelectorAll('img');
+  imgs.forEach(img => {
+    img.style.width = '80px';
+    img.style.height = '80px';
+    img.style.borderColor = 'var(--border)';
+  });
+  el.style.width = '100%';
+  el.style.height = 'auto';
+  el.style.borderColor = 'var(--accent)';
+  // Scroll the strip so selected image is visible
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+}
+
 function renderDetailExtra(d) {
   const el = document.getElementById('detail-extra');
   if (!el) return;
 
   let html = '';
 
-  // All artwork
+  // All artwork - full res images, scroll-synced zoom
   if (d.images && d.images.length > 1) {
-    html += `<div class="detail-section-title">Artwork</div>
-    <div style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;margin-bottom:16px;">
-      ${d.images.slice(0,8).map(img => `
-        <img src="${img.uri150||img.uri}" alt="Artwork"
-          style="width:80px;height:80px;object-fit:cover;border-radius:var(--radius);flex-shrink:0;border:var(--border-w) solid var(--border);cursor:pointer;"
-          onclick="this.style.width=this.style.width==='80px'?'100%':'80px';this.style.height=this.style.height==='80px'?'auto':'80px';"
-        >`).join('')}
-    </div>`;
+    const imgs = d.images.slice(0,8);
+    html += '<div class="detail-section-title">Artwork</div>'
+      + '<div id="art-strip" style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;margin-bottom:16px;scroll-snap-type:x mandatory;">'
+      + imgs.map((img, i) => {
+          const src = img.uri || img.uri150 || '';
+          return '<img src="' + src + '" alt="Artwork" data-idx="' + i + '"'
+            + ' style="width:80px;height:80px;object-fit:cover;border-radius:var(--radius);flex-shrink:0;'
+            + 'border:var(--border-w) solid var(--border);cursor:pointer;scroll-snap-align:start;'
+            + 'transition:width 0.25s,height 0.25s,border-color 0.2s;"'
+            + ' onclick="selectArtwork(this)">';
+        }).join('')
+      + '</div>';
   }
 
   // Tracklist
