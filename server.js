@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3000;
 
 const DISCOGS_KEY = (process.env.DISCOGS_KEY || '').trim();
 const ELEVENLABS_KEY = (process.env.ELEVENLABS_KEY || '').trim();
+const ANTHROPIC_KEY = (process.env.ANTHROPIC_KEY || '').trim();
 const ADAM_VOICE_ID = 'XB0fDUnXU5powFXDhCwa';
 const DISCOGS_SECRET = (process.env.DISCOGS_SECRET || '').trim();
 const APP_URL = (process.env.APP_URL || `http://localhost:${PORT}`).trim().replace(/\/$/, '');
@@ -170,6 +171,40 @@ app.get('/debug/store', (req, res) => {
     entries.push({ key: k.substring(0,8)+'...', username: v.username, hasToken: !!v.accessToken, age: Math.round((Date.now()-v.created)/1000)+'s' });
   });
   res.json({ storeSize: tokenStore.size, entries });
+});
+
+// Claude AI chat proxy - keeps API key server-side
+app.post('/api/chat', async (req, res) => {
+  const sk = req.query.sk;
+  if (!sk) return res.status(401).json({ error: 'Not authenticated' });
+  const stored = tokenStore.get(sk);
+  if (!stored) return res.status(401).json({ error: 'Session expired' });
+  if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'AI not configured' });
+
+  const { messages, system, max_tokens } = req.body;
+  if (!messages) return res.status(400).json({ error: 'No messages provided' });
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: max_tokens || 400,
+        system,
+        messages,
+      }),
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch(e) {
+    console.error('Claude proxy error:', e.message);
+    res.status(500).json({ error: 'AI request failed' });
+  }
 });
 
 // ElevenLabs TTS proxy - keeps API key server-side
