@@ -344,7 +344,8 @@
 
   /* ── DESKTOP LAYOUT ── */
   @media (min-width: 768px) {
-    body { background: var(--bg); }
+    body { background: var(--bg); overflow: hidden; }
+    #app { overflow: hidden; }
 
     /* Desktop full-width layout */
     #app {
@@ -427,6 +428,13 @@
       max-width: 680px !important;
       left: 50% !important;
       margin-left: -340px !important;
+      right: auto !important;
+    }
+    .settings-panel:not(.open), .chat-panel:not(.open), #lyrics-panel:not(.open) {
+      visibility: hidden;
+    }
+    .settings-panel.open, .chat-panel.open, #lyrics-panel.open {
+      visibility: visible;
     }
 
     /* FAB position */
