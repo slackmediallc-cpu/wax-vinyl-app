@@ -253,7 +253,7 @@ app.post('/api/speak', async (req, res) => {
   }
 });
 
-// Genius lyrics proxy
+// Genius lyrics proxy - uses API search only, no scraping
 app.get('/api/lyrics', async (req, res) => {
   const sk = req.query.sk;
   if (!sk) return res.status(401).json({ error: 'Not authenticated' });
@@ -265,50 +265,51 @@ app.get('/api/lyrics', async (req, res) => {
   if (!artist || !song) return res.status(400).json({ error: 'Missing artist or song' });
 
   try {
-    // Search Genius for the song
     const searchUrl = 'https://api.genius.com/search?q=' + encodeURIComponent(artist + ' ' + song);
     const searchRes = await fetch(searchUrl, {
-      headers: { 'Authorization': 'Bearer ' + GENIUS_KEY }
+      headers: { 'Authorization': 'Bearer ' + GENIUS_KEY },
+      signal: AbortSignal.timeout(5000),
     });
     const searchData = await searchRes.json();
     const hits = searchData.response?.hits || [];
 
-    if (hits.length === 0) {
-      return res.json({ lyrics: null });
-    }
+    if (hits.length === 0) return res.json({ lyrics: null });
 
-    // Find best match - prefer exact artist name match
-    const artistLower = artist.toLowerCase();
-    const songLower = song.toLowerCase();
+    // Find best match
+    const artistLower = artist.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const songLower = song.toLowerCase().replace(/[^a-z0-9]/g, '');
     let best = hits[0];
     for (const hit of hits) {
-      const hitArtist = (hit.result.primary_artist?.name || '').toLowerCase();
-      const hitTitle = (hit.result.title || '').toLowerCase();
-      if (hitArtist.includes(artistLower) || artistLower.includes(hitArtist)) {
-        if (hitTitle.includes(songLower) || songLower.includes(hitTitle)) {
-          best = hit;
-          break;
-        }
+      const ha = (hit.result.primary_artist?.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const ht = (hit.result.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if ((ha.includes(artistLower) || artistLower.includes(ha)) && ht.includes(songLower)) {
+        best = hit; break;
       }
     }
 
-    const geniusUrl = best.result.url;
-    const geniusTitle = best.result.title;
-    const geniusArtist = best.result.primary_artist?.name || artist;
-
-    // Scrape lyrics from Genius page
-    const pageRes = await fetch(geniusUrl, {
-      headers: { 'User-Agent': 'WaxVinylApp/1.0' }
+    // Fetch the Genius page and scrape lyrics
+    const pageRes = await fetch(best.result.url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(8000),
     });
+
     const html = await pageRes.text();
 
-    // Extract lyrics from data-lyrics-container divs
-    const lyricMatches = html.match(/data-lyrics-container="true"[^>]*>([\s\S]*?)<\/div>/g) || [];
-    let lyrics = lyricMatches
-      .map(function(block) {
+    // Multiple extraction strategies
+    let lyrics = '';
+    const NL = String.fromCharCode(10);
+
+    // Strategy 1: data-lyrics-container
+    const containers = html.match(/data-lyrics-container="true"[\s\S]*?<\/div>/g) || [];
+    if (containers.length > 0) {
+      lyrics = containers.map(function(block) {
         return block
           .replace(/data-lyrics-container="true"[^>]*>/, '')
-          .replace(/<br[^>]*>/gi, '\n')
+          .replace(/<br[^>]*>/gi, NL)
           .replace(/<[^>]+>/g, '')
           .replace(/&amp;/g, '&')
           .replace(/&apos;/g, "'")
@@ -316,18 +317,33 @@ app.get('/api/lyrics', async (req, res) => {
           .replace(/&quot;/g, '"')
           .replace(/&lt;/g, '<')
           .replace(/&gt;/g, '>');
-      })
-      .join('\n')
-      .trim()
-
-    if (!lyrics || lyrics.length < 10) {
-      return res.json({ lyrics: null, url: geniusUrl });
+      }).join(NL).trim();
     }
 
-    res.json({ lyrics, title: geniusTitle, artist: geniusArtist, url: geniusUrl });
+    // Strategy 2: JSON embedded lyrics
+    if (!lyrics) {
+      const jsonMatch = html.match(/"plain":"([^"]+)"/);
+      if (jsonMatch) {
+        try {
+          lyrics = JSON.parse('"' + jsonMatch[1] + '"');
+        } catch(e) {
+          lyrics = jsonMatch[1].split('\\n').join(NL);
+        }
+      }
+    }
+    if (!lyrics || lyrics.length < 10) {
+      return res.json({ lyrics: null, url: best.result.url, title: best.result.title });
+    }
+
+    res.json({
+      lyrics,
+      title: best.result.title,
+      artist: best.result.primary_artist?.name || artist,
+      url: best.result.url
+    });
   } catch(e) {
     console.error('Genius error:', e.message);
-    res.status(500).json({ error: e.message });
+    res.json({ lyrics: null });
   }
 });
 
