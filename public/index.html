@@ -734,8 +734,19 @@ function renderApp() {
   }, 0);
 }
 
+let _lastWidth = window.innerWidth;
+let _resizeTimer = null;
 window.addEventListener('resize', function() {
-  if (releases.length) renderApp();
+  if (!releases.length) return;
+  const newWidth = window.innerWidth;
+  // Only re-render if WIDTH changed (not just height, which iOS does on scroll)
+  if (newWidth !== _lastWidth) {
+    _lastWidth = newWidth;
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(function() {
+      renderApp();
+    }, 150);
+  }
 });
 
 
