@@ -371,8 +371,8 @@
     <div class="theme-preview-card" id="theme-preview-card">
       <div class="preview-disc-sm" id="prev-disc-sm"><div class="hole"></div></div>
       <div class="preview-info">
-        <div class="preview-rec-title" id="prev-rec-title-sm">Rumours</div>
-        <div class="preview-rec-sub" id="prev-rec-sub-sm">Fleetwood Mac · 1977</div>
+        <div class="preview-rec-title" id="prev-rec-title-sm">The Dark Side of the Moon</div>
+        <div class="preview-rec-sub" id="prev-rec-sub-sm">Pink Floyd · 1973</div>
       </div>
       <div class="preview-accent-dot" id="prev-accent-dot"></div>
     </div>
@@ -380,115 +380,14 @@
 
   <!-- Scrollable controls -->
   <div class="settings-body" id="settings-body">
-    <div class="settings-section">
-      <div class="settings-section-title">Preset themes</div>
-      <div class="preset-scroll" id="preset-scroll"></div>
+    <div style="padding:16px;">
+      <div class="settings-section-title" style="margin-bottom:12px;">Choose a theme</div>
+      <div id="preset-list" style="display:flex;flex-direction:column;gap:10px;"></div>
     </div>
-
-    <div class="settings-section" style="margin-top:16px;">
-      <div class="settings-section-title">Colors</div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Background</div></div>
-        <input type="color" class="color-btn" id="c-bg" oninput="applyCustom()">
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Card surface</div></div>
-        <input type="color" class="color-btn" id="c-card" oninput="applyCustom()">
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Accent color</div></div>
-        <input type="color" class="color-btn" id="c-accent" oninput="applyCustom()">
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Accent text</div></div>
-        <input type="color" class="color-btn" id="c-accenttext" oninput="applyCustom()">
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Primary text</div></div>
-        <input type="color" class="color-btn" id="c-text" oninput="applyCustom()">
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Secondary text</div></div>
-        <input type="color" class="color-btn" id="c-subtext" oninput="applyCustom()">
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Border color</div></div>
-        <input type="color" class="color-btn" id="c-border" oninput="applyCustom()">
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Disc color</div></div>
-        <input type="color" class="color-btn" id="c-disc" oninput="applyCustom()">
-      </div>
-      <div class="ctrl-row" style="border-bottom:none;">
-        <div><div class="ctrl-label">Art area background</div></div>
-        <input type="color" class="color-btn" id="c-artbg" oninput="applyCustom()">
-      </div>
-    </div>
-
-    <div class="settings-section" style="margin-top:16px;">
-      <div class="settings-section-title">Typography</div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Title font</div></div>
-        <select class="ctrl-select" id="f-title" onchange="applyCustom()">
-          <option value="system-ui,sans-serif">System</option>
-          <option value="Georgia,serif">Georgia</option>
-          <option value="'Courier New',monospace">Courier</option>
-          <option value="Palatino,serif">Palatino</option>
-          <option value="'Arial Narrow',sans-serif">Arial Narrow</option>
-        </select>
-      </div>
-      <div class="ctrl-row" style="border-bottom:none;">
-        <div><div class="ctrl-label">Label font</div></div>
-        <select class="ctrl-select" id="f-label" onchange="applyCustom()">
-          <option value="system-ui,sans-serif">System</option>
-          <option value="Georgia,serif">Georgia</option>
-          <option value="'Courier New',monospace">Courier</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="settings-section" style="margin-top:16px;">
-      <div class="settings-section-title">Layout & shape</div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Card corners</div></div>
-        <div class="ctrl-range-row">
-          <input type="range" min="0" max="20" step="1" id="l-radius" oninput="document.getElementById('l-radius-val').textContent=this.value+'px'; applyCustom()">
-          <span class="ctrl-val" id="l-radius-val">6px</span>
-        </div>
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Border width</div></div>
-        <select class="ctrl-select" id="l-borderw" onchange="applyCustom()">
-          <option value="0px">None</option>
-          <option value="0.5px" selected>Thin</option>
-          <option value="1px">Medium</option>
-          <option value="2px">Bold</option>
-        </select>
-      </div>
-      <div class="ctrl-row">
-        <div><div class="ctrl-label">Button shape</div></div>
-        <select class="ctrl-select" id="l-btnshape" onchange="applyCustom()">
-          <option value="4px">Sharp</option>
-          <option value="8px" selected>Rounded</option>
-          <option value="24px">Pill</option>
-        </select>
-      </div>
-      <div class="ctrl-row" style="border-bottom:none;">
-        <div><div class="ctrl-label">Spacing</div></div>
-        <select class="ctrl-select" id="l-density" onchange="applyCustom()">
-          <option value="4">Compact</option>
-          <option value="8" selected>Normal</option>
-          <option value="14">Spacious</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="settings-section" style="margin-top:16px; padding-bottom:16px;">
-      <div class="settings-section-title">Discogs account</div>
-      <div class="ctrl-row" style="border-bottom:none; flex-direction:column; align-items:stretch; gap:8px;">
-        <p style="font-size:12px; color:var(--subtext); line-height:1.6;">Signed in as <strong style="color:var(--text);" id="settings-username">your account</strong>. Your collection syncs automatically.</p>
-        <button class="token-btn" onclick="reconnect()" style="font-size:13px; padding:10px; background:transparent; border:var(--border-w) solid var(--border); color:var(--text);">Switch Discogs account</button>
-      </div>
+    <div style="padding:16px;border-top:var(--border-w) solid var(--border);margin-top:8px;">
+      <div class="settings-section-title" style="margin-bottom:10px;">Discogs account</div>
+      <p style="font-size:12px;color:var(--subtext);line-height:1.6;margin-bottom:10px;">Signed in as <strong style="color:var(--text);" id="settings-username">your account</strong>.</p>
+      <button onclick="reconnect()" style="font-size:13px;padding:10px;background:transparent;border:var(--border-w) solid var(--border);color:var(--text);border-radius:var(--radius);width:100%;cursor:pointer;font-family:inherit;">Switch Discogs account</button>
     </div>
   </div>
 </div>
@@ -528,14 +427,21 @@
 
 <script>
 const PRESETS = [
-  { id:'dark', name:'Wax & Shadow', bg:'#1a1410', card:'#241c10', accent:'#c47f1a', accenttext:'#1a1410', text:'#f0c870', subtext:'#7a6040', border:'#3a2c18', disc:'#5a4020', artbg:'#2a2018', titleFont:'system-ui,sans-serif', labelFont:'system-ui,sans-serif', radius:6, borderW:'0.5px', btnShape:'8px', density:8 },
-  { id:'light', name:'Clean Light', bg:'#f9f9f7', card:'#ffffff', accent:'#1a1a1a', accenttext:'#f9f9f7', text:'#1a1a1a', subtext:'#999999', border:'#e4e3df', disc:'#d4d2cc', artbg:'#eeede9', titleFont:'system-ui,sans-serif', labelFont:'system-ui,sans-serif', radius:6, borderW:'0.5px', btnShape:'8px', density:8 },
-  { id:'vintage', name:'Vintage Paper', bg:'#f5f0e4', card:'#ede4cc', accent:'#7a5830', accenttext:'#f5f0e4', text:'#4a3418', subtext:'#9a8060', border:'#d4c8a8', disc:'#b8a880', artbg:'#e8dfc8', titleFont:'Georgia,serif', labelFont:'Georgia,serif', radius:4, borderW:'0.5px', btnShape:'4px', density:8 },
-  { id:'midnight', name:'Midnight Blue', bg:'#0d1420', card:'#141e30', accent:'#1a6cc4', accenttext:'#e8f4ff', text:'#90c8f8', subtext:'#4a6080', border:'#1e2e48', disc:'#2a3e60', artbg:'#141e30', titleFont:'system-ui,sans-serif', labelFont:'system-ui,sans-serif', radius:6, borderW:'0.5px', btnShape:'8px', density:8 },
-  { id:'forest', name:'Forest Green', bg:'#0e1a10', card:'#142016', accent:'#3a8a4a', accenttext:'#e8f5ea', text:'#90d898', subtext:'#406050', border:'#1e3020', disc:'#2a5030', artbg:'#142016', titleFont:'system-ui,sans-serif', labelFont:'system-ui,sans-serif', radius:6, borderW:'0.5px', btnShape:'8px', density:8 },
-  { id:'neon', name:'Neon Underground', bg:'#0a080f', card:'#120f1a', accent:'#c040e0', accenttext:'#f8e8ff', text:'#e060f8', subtext:'#604878', border:'#1e1428', disc:'#3a1a50', artbg:'#120f1a', titleFont:'system-ui,sans-serif', labelFont:"'Courier New',monospace", radius:2, borderW:'1px', btnShape:'2px', density:8 },
-  { id:'rosewood', name:'Warm Rosewood', bg:'#1e0c10', card:'#2a1018', accent:'#a03050', accenttext:'#ffe8ee', text:'#e8a0b0', subtext:'#804050', border:'#3a1828', disc:'#6a2038', artbg:'#2a1018', titleFont:'Georgia,serif', labelFont:'system-ui,sans-serif', radius:8, borderW:'0.5px', btnShape:'8px', density:8 },
-  { id:'arctic', name:'Arctic White', bg:'#ffffff', card:'#f4f4f4', accent:'#333333', accenttext:'#ffffff', text:'#111111', subtext:'#aaaaaa', border:'#e8e8e8', disc:'#cccccc', artbg:'#f0f0f0', titleFont:'system-ui,sans-serif', labelFont:'system-ui,sans-serif', radius:0, borderW:'0.5px', btnShape:'0px', density:6 },
+  // Light themes
+  { id:'light', name:'Clean Light', bg:'#f9f9f7', card:'#ffffff', accent:'#1a1a1a', accenttext:'#f9f9f7', text:'#1a1a1a', subtext:'#777777', border:'#d8d7d3', disc:'#d4d2cc', artbg:'#eeede9', titleFont:'system-ui,sans-serif', labelFont:'system-ui,sans-serif', radius:6, borderW:'0.5px', btnShape:'8px', density:8 },
+  { id:'vintage', name:'Vintage Paper', bg:'#f5f0e4', card:'#ede4cc', accent:'#7a5830', accenttext:'#f5f0e4', text:'#3a2810', subtext:'#8a7050', border:'#c8b890', disc:'#b8a880', artbg:'#e8dfc8', titleFont:'Georgia,serif', labelFont:'Georgia,serif', radius:4, borderW:'0.5px', btnShape:'4px', density:8 },
+  { id:'desert', name:'Desert Sand', bg:'#f2e8d8', card:'#fffaf2', accent:'#c45a1a', accenttext:'#fff8f0', text:'#2a1a08', subtext:'#8a6a40', border:'#d4b888', disc:'#c49060', artbg:'#e8dcc8', titleFont:'system-ui,sans-serif', labelFont:'system-ui,sans-serif', radius:8, borderW:'0.5px', btnShape:'8px', density:8 },
+  // Dark themes - fixed contrast
+  { id:'dark', name:'Wax & Shadow', bg:'#1a1410', card:'#2e2418', accent:'#c47f1a', accenttext:'#1a1410', text:'#f0c870', subtext:'#a08050', border:'#504030', disc:'#705028', artbg:'#241c10', titleFont:'system-ui,sans-serif', labelFont:'system-ui,sans-serif', radius:6, borderW:'0.5px', btnShape:'8px', density:8 },
+  { id:'midnight', name:'Midnight Blue', bg:'#0d1420', card:'#182030', accent:'#3a8ce8', accenttext:'#e8f4ff', text:'#b8dcf8', subtext:'#6888a8', border:'#2a3a58', disc:'#2a4070', artbg:'#182030', titleFont:'system-ui,sans-serif', labelFont:'system-ui,sans-serif', radius:6, borderW:'0.5px', btnShape:'8px', density:8 },
+  { id:'forest', name:'Forest Green', bg:'#0e1a10', card:'#1a2c1c', accent:'#4aaa5a', accenttext:'#e8f5ea', text:'#a0e0a8', subtext:'#60906a', border:'#2a4830', disc:'#306840', artbg:'#1a2c1c', titleFont:'system-ui,sans-serif', labelFont:'system-ui,sans-serif', radius:6, borderW:'0.5px', btnShape:'8px', density:8 },
+  { id:'neon', name:'Neon Underground', bg:'#0a080f', card:'#18122a', accent:'#c040e0', accenttext:'#f8e8ff', text:'#e080f8', subtext:'#9060a8', border:'#301848', disc:'#4a2068', artbg:'#18122a', titleFont:'system-ui,sans-serif', labelFont:"'Courier New',monospace", radius:2, borderW:'1px', btnShape:'2px', density:8 },
+  { id:'rosewood', name:'Warm Rosewood', bg:'#1e0c10', card:'#341420', accent:'#c03858', accenttext:'#ffe8ee', text:'#f0b0c0', subtext:'#a06070', border:'#502030', disc:'#802840', artbg:'#341420', titleFont:'Georgia,serif', labelFont:'system-ui,sans-serif', radius:8, borderW:'0.5px', btnShape:'8px', density:8 },
+  // New themes
+  { id:'amber', name:'Amber & Smoke', bg:'#1c1408', card:'#2e2010', accent:'#e8900a', accenttext:'#1c1408', text:'#f8d080', subtext:'#b08840', border:'#504020', disc:'#704e18', artbg:'#2e2010', titleFont:'system-ui,sans-serif', labelFont:'system-ui,sans-serif', radius:6, borderW:'0.5px', btnShape:'8px', density:8 },
+  { id:'blood', name:'Blood Orange', bg:'#1a0800', card:'#2e1008', accent:'#f05010', accenttext:'#fff0e8', text:'#f8c080', subtext:'#c07040', border:'#502818', disc:'#803018', artbg:'#2e1008', titleFont:'system-ui,sans-serif', labelFont:'system-ui,sans-serif', radius:6, borderW:'0.5px', btnShape:'8px', density:8 },
+  { id:'slate', name:'Slate & Steel', bg:'#141820', card:'#1e2430', accent:'#6090c0', accenttext:'#e8f0f8', text:'#c0ccd8', subtext:'#7080a0', border:'#303848', disc:'#405068', artbg:'#1e2430', titleFont:'system-ui,sans-serif', labelFont:'system-ui,sans-serif', radius:6, borderW:'0.5px', btnShape:'8px', density:8 },
+  { id:'purple', name:'Purple Haze', bg:'#100818', card:'#1c1028', accent:'#9050e0', accenttext:'#f0e8ff', text:'#c898f8', subtext:'#8060a8', border:'#301850', disc:'#502880', artbg:'#1c1028', titleFont:'system-ui,sans-serif', labelFont:'system-ui,sans-serif', radius:6, borderW:'0.5px', btnShape:'8px', density:8 },
 ];
 
 
@@ -550,7 +456,7 @@ let randomRecord = null;
 let currentTheme = PRESETS[0];
 
 // Apply theme to CSS vars
-function applyTheme(t) {
+function applyTheme(t, save) {
   const r = document.documentElement;
   r.style.setProperty('--bg', t.bg);
   r.style.setProperty('--card', t.card);
@@ -568,69 +474,55 @@ function applyTheme(t) {
   r.style.setProperty('--btn-shape', t.btnShape||'8px');
   r.style.setProperty('--density', (t.density||8)+'px');
   currentTheme = t;
+  if (save !== false) localStorage.setItem('wax_theme', t.id);
 }
 
-function applyCustom() {
-  const t = {
-    bg: document.getElementById('c-bg').value,
-    card: document.getElementById('c-card').value,
-    accent: document.getElementById('c-accent').value,
-    accenttext: document.getElementById('c-accenttext').value,
-    text: document.getElementById('c-text').value,
-    subtext: document.getElementById('c-subtext').value,
-    border: document.getElementById('c-border').value,
-    disc: document.getElementById('c-disc').value,
-    artbg: document.getElementById('c-artbg').value,
-    titleFont: document.getElementById('f-title').value,
-    labelFont: document.getElementById('f-label').value,
-    radius: parseInt(document.getElementById('l-radius').value),
-    borderW: document.getElementById('l-borderw').value,
-    btnShape: document.getElementById('l-btnshape').value,
-    density: parseInt(document.getElementById('l-density').value),
-  };
-  applyTheme(t);
-  document.querySelectorAll('.preset-pill').forEach(p => p.classList.remove('active'));
-}
-
-function syncControlsToTheme(t) {
-  document.getElementById('c-bg').value = t.bg;
-  document.getElementById('c-card').value = t.card;
-  document.getElementById('c-accent').value = t.accent;
-  document.getElementById('c-accenttext').value = t.accenttext;
-  document.getElementById('c-text').value = t.text;
-  document.getElementById('c-subtext').value = t.subtext;
-  document.getElementById('c-border').value = t.border;
-  document.getElementById('c-disc').value = t.disc;
-  document.getElementById('c-artbg').value = t.artbg;
-  document.getElementById('f-title').value = t.titleFont;
-  document.getElementById('f-label').value = t.labelFont;
-  const rad = document.getElementById('l-radius');
-  rad.value = t.radius || 6;
-  document.getElementById('l-radius-val').textContent = (t.radius||6)+'px';
-  document.getElementById('l-borderw').value = t.borderW || '0.5px';
-  document.getElementById('l-btnshape').value = t.btnShape || '8px';
-  document.getElementById('l-density').value = t.density || 8;
-}
-
-function buildPresetPills() {
-  const c = document.getElementById('preset-scroll');
-  c.innerHTML = '';
-  PRESETS.forEach(p => {
-    const btn = document.createElement('button');
-    btn.className = 'preset-pill' + (p.id === currentTheme.id ? ' active' : '');
-    btn.dataset.id = p.id;
-    btn.innerHTML = '<span class="preset-dot" style="background:'+p.accent+';"></span>' + p.name;
-    btn.onclick = () => {
-      document.querySelectorAll('.preset-pill').forEach(x => x.classList.remove('active'));
-      btn.classList.add('active');
-      applyTheme(p);
-      syncControlsToTheme(p);
-    };
-    c.appendChild(btn);
+function buildPresetList() {
+  const list = document.getElementById('preset-list');
+  if (!list) return;
+  list.innerHTML = '';
+  PRESETS.forEach(function(p) {
+    const isActive = p.id === currentTheme.id;
+    const card = document.createElement('div');
+    card.style.cssText = 'border-radius:12px;overflow:hidden;cursor:pointer;border:2px solid '
+      + (isActive ? p.accent : 'rgba(255,255,255,0.08)') + ';transition:border-color 0.2s;';
+    card.innerHTML = '<div style="background:' + p.bg + ';padding:10px 10px 8px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+      + '<span style="font-size:10px;font-weight:700;color:' + p.text + ';font-family:' + p.titleFont + ';">Wax</span>'
+      + '<div style="width:18px;height:18px;border-radius:50%;background:' + p.card + ';border:0.5px solid ' + p.border + ';"></div>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">'
+      + buildMiniCard(p, 'The Dark Side of the Moon', 'Pink Floyd')
+      + buildMiniCard(p, 'Rumours', 'Fleetwood Mac')
+      + '</div>'
+      + '<div style="display:flex;gap:4px;margin-bottom:8px;">'
+      + '<div style="font-size:8px;padding:3px 8px;border-radius:10px;background:' + p.accent + ';color:' + p.accenttext + ';">All</div>'
+      + '<div style="font-size:8px;padding:3px 8px;border-radius:10px;background:' + p.card + ';border:0.5px solid ' + p.border + ';color:' + p.subtext + ';">Rock</div>'
+      + '<div style="font-size:8px;padding:3px 8px;border-radius:10px;background:' + p.card + ';border:0.5px solid ' + p.border + ';color:' + p.subtext + ';">Jazz</div>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;padding-top:6px;border-top:0.5px solid ' + p.border + ';">'
+      + '<span style="font-size:11px;font-weight:600;color:' + p.text + ';font-family:' + p.titleFont + ';">' + p.name + '</span>'
+      + (isActive ? '<span style="font-size:9px;background:' + p.accent + ';color:' + p.accenttext + ';padding:2px 8px;border-radius:8px;">Active</span>' : '<span style="font-size:9px;color:' + p.subtext + ';">Tap to apply</span>')
+      + '</div>'
+      + '</div>';
+    card.onclick = function() { applyTheme(p); buildPresetList(); };
+    list.appendChild(card);
   });
 }
 
-// Backend API — session key stored in localStorage, passed as ?sk= param
+function buildMiniCard(p, title, artist) {
+  return '<div style="background:' + p.card + ';border-radius:6px;border:0.5px solid ' + p.border + ';overflow:hidden;">'
+    + '<div style="width:100%;aspect-ratio:1;background:' + p.artbg + ';display:flex;align-items:center;justify-content:center;">'
+    + '<div style="width:28px;height:28px;border-radius:50%;background:' + p.disc + ';border:1.5px solid ' + p.border + ';display:flex;align-items:center;justify-content:center;">'
+    + '<div style="width:5px;height:5px;border-radius:50%;background:' + p.bg + ';"></div>'
+    + '</div></div>'
+    + '<div style="padding:5px 6px;">'
+    + '<div style="font-size:8px;font-weight:500;color:' + p.text + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:' + p.titleFont + ';">' + title + '</div>'
+    + '<div style="font-size:7px;color:' + p.subtext + ';font-family:' + p.labelFont + ';">' + artist + '</div>'
+    + '</div></div>';
+}
+
+
 function getSK() { return localStorage.getItem('wax_sk') || ''; }
 
 async function apiGet(endpoint) {
@@ -1940,12 +1832,11 @@ async function sendMessage(text, hidden) {
 }
 
 function openSettings() {
-  buildPresetPills();
-  syncControlsToTheme(currentTheme);
-  const unEl = document.getElementById('settings-username');
-  if (unEl && USERNAME) unEl.textContent = USERNAME;
   document.getElementById('settings-panel').classList.add('open');
   document.getElementById('settings-body').scrollTop = 0;
+  buildPresetList();
+  const unEl = document.getElementById('settings-username');
+  if (unEl && USERNAME) unEl.textContent = USERNAME;
 }
 
 function closeSettings() {
