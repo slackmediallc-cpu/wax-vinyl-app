@@ -9,6 +9,7 @@ const PORT = process.env.PORT || 3000;
 const DISCOGS_KEY = (process.env.DISCOGS_KEY || '').trim();
 const ELEVENLABS_KEY = (process.env.ELEVENLABS_KEY || '').trim();
 const ANTHROPIC_KEY = (process.env.ANTHROPIC_KEY || '').trim();
+const GENIUS_KEY = (process.env.GENIUS_KEY || '').trim();
 const ADAM_VOICE_ID = 'XB0fDUnXU5powFXDhCwa';
 const DISCOGS_SECRET = (process.env.DISCOGS_SECRET || '').trim();
 const APP_URL = (process.env.APP_URL || `http://localhost:${PORT}`).trim().replace(/\/$/, '');
@@ -248,6 +249,85 @@ app.post('/api/speak', async (req, res) => {
     response.body.pipe(res);
   } catch(e) {
     console.error('Speak error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Genius lyrics proxy
+app.get('/api/lyrics', async (req, res) => {
+  const sk = req.query.sk;
+  if (!sk) return res.status(401).json({ error: 'Not authenticated' });
+  const stored = tokenStore.get(sk);
+  if (!stored) return res.status(401).json({ error: 'Session expired' });
+  if (!GENIUS_KEY) return res.status(500).json({ error: 'Genius not configured' });
+
+  const { artist, song } = req.query;
+  if (!artist || !song) return res.status(400).json({ error: 'Missing artist or song' });
+
+  try {
+    // Search Genius for the song
+    const searchUrl = 'https://api.genius.com/search?q=' + encodeURIComponent(artist + ' ' + song);
+    const searchRes = await fetch(searchUrl, {
+      headers: { 'Authorization': 'Bearer ' + GENIUS_KEY }
+    });
+    const searchData = await searchRes.json();
+    const hits = searchData.response?.hits || [];
+
+    if (hits.length === 0) {
+      return res.json({ lyrics: null });
+    }
+
+    // Find best match - prefer exact artist name match
+    const artistLower = artist.toLowerCase();
+    const songLower = song.toLowerCase();
+    let best = hits[0];
+    for (const hit of hits) {
+      const hitArtist = (hit.result.primary_artist?.name || '').toLowerCase();
+      const hitTitle = (hit.result.title || '').toLowerCase();
+      if (hitArtist.includes(artistLower) || artistLower.includes(hitArtist)) {
+        if (hitTitle.includes(songLower) || songLower.includes(hitTitle)) {
+          best = hit;
+          break;
+        }
+      }
+    }
+
+    const geniusUrl = best.result.url;
+    const geniusTitle = best.result.title;
+    const geniusArtist = best.result.primary_artist?.name || artist;
+
+    // Scrape lyrics from Genius page
+    const pageRes = await fetch(geniusUrl, {
+      headers: { 'User-Agent': 'WaxVinylApp/1.0' }
+    });
+    const html = await pageRes.text();
+
+    // Extract lyrics from data-lyrics-container divs
+    const lyricMatches = html.match(/data-lyrics-container="true"[^>]*>([\s\S]*?)<\/div>/g) || [];
+    let lyrics = lyricMatches
+      .map(block => block
+        .replace(/data-lyrics-container="true"[^>]*>/, '')
+        .replace(/<br\s*\/?>/gi, '
+')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&amp;/g, '&')
+        .replace(/&apos;/g, "'")
+        .replace(/&#x27;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+      )
+      .join('
+')
+      .trim();
+
+    if (!lyrics || lyrics.length < 10) {
+      return res.json({ lyrics: null, url: geniusUrl });
+    }
+
+    res.json({ lyrics, title: geniusTitle, artist: geniusArtist, url: geniusUrl });
+  } catch(e) {
+    console.error('Genius error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
