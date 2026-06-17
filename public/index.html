@@ -829,6 +829,7 @@ function closeDetail() {
 
 // ── PICKER STYLES ──
 let pickerStyle = localStorage.getItem('wax_picker') || 'crate';
+let vibeSelections = { mood: null, time: null, setting: null, genre: null };
 
 function openRandom() {
   if (!releases.length) return;
