@@ -305,21 +305,20 @@ app.get('/api/lyrics', async (req, res) => {
     // Extract lyrics from data-lyrics-container divs
     const lyricMatches = html.match(/data-lyrics-container="true"[^>]*>([\s\S]*?)<\/div>/g) || [];
     let lyrics = lyricMatches
-      .map(block => block
-        .replace(/data-lyrics-container="true"[^>]*>/, '')
-        .replace(/<br\s*\/?>/gi, '
-')
-        .replace(/<[^>]+>/g, '')
-        .replace(/&amp;/g, '&')
-        .replace(/&apos;/g, "'")
-        .replace(/&#x27;/g, "'")
-        .replace(/&quot;/g, '"')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-      )
-      .join('
-')
-      .trim();
+      .map(function(block) {
+        return block
+          .replace(/data-lyrics-container="true"[^>]*>/, '')
+          .replace(/<br[^>]*>/gi, '\n')
+          .replace(/<[^>]+>/g, '')
+          .replace(/&amp;/g, '&')
+          .replace(/&apos;/g, "'")
+          .replace(/&#x27;/g, "'")
+          .replace(/&quot;/g, '"')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>');
+      })
+      .join('\n')
+      .trim()
 
     if (!lyrics || lyrics.length < 10) {
       return res.json({ lyrics: null, url: geniusUrl });
