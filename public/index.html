@@ -1287,11 +1287,8 @@ function runOracle(c) {
     if (artistEl) artistEl.textContent = bi.artists[0]?.name || '';
     if (actionsEl) actionsEl.innerHTML = pickerActions();
     if (el) el.style.opacity = '1';
-    // Speak after a short pause - just the slogan, then album and artist separately
-    setTimeout(() => {
-      const artist = bi.artists[0]?.name || '';
-      speakOracle(slogan + ' ... ' + bi.title + ' ... ' + artist);
-    }, 800);
+    // Voice coming soon - will use OpenAI TTS in Phase 4
+    // setTimeout(() => speakOracle(slogan + ' ... ' + bi.title + ' ... ' + (bi.artists[0]?.name || '')), 800);
   }, 5000);
 }
 
