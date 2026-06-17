@@ -493,6 +493,19 @@
   </div>
 </div>
 
+<!-- Lyrics Panel -->
+<div class="chat-panel" id="lyrics-panel">
+  <div class="chat-record-header" id="lyrics-record-header">
+    <div id="lyrics-art-wrap"></div>
+    <div class="chat-record-info">
+      <div class="chat-record-title" id="lyrics-rec-title"></div>
+      <div class="chat-record-sub" id="lyrics-rec-sub"></div>
+    </div>
+    <button class="chat-close-btn" onclick="closeLyrics()">&#8595;</button>
+  </div>
+  <div id="lyrics-body" style="flex:1;overflow-y:auto;padding:16px 20px 40px;"></div>
+</div>
+
 <!-- AI Chat Panel -->
 <div class="chat-panel" id="chat-panel">
   <div class="chat-record-header" id="chat-record-header" onclick="closeChat()">
@@ -799,10 +812,16 @@ async function openDetail(idx) {
     <div class="detail-body">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px;">
         <h1 class="detail-title" style="margin-bottom:0;">${escHtml(bi.title)}</h1>
-        <button onclick="startAiChat()" style="flex-shrink:0;background:var(--accent);border:none;border-radius:10px;padding:8px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:4px;">
-          <span style="font-size:16px;">✨</span>
-          <span style="font-size:8px;font-weight:600;color:var(--accent-text);letter-spacing:0.04em;white-space:nowrap;">AI Chat</span>
-        </button>
+        <div style="display:flex;gap:6px;flex-shrink:0;margin-top:4px;">
+          <button onclick="startAiChat()" style="background:var(--accent);border:none;border-radius:10px;padding:8px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <span style="font-size:16px;">✨</span>
+            <span style="font-size:8px;font-weight:600;color:var(--accent-text);letter-spacing:0.04em;white-space:nowrap;">AI Chat</span>
+          </button>
+          <button onclick="openLyrics()" style="background:var(--card);border:var(--border-w) solid var(--border);border-radius:10px;padding:8px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <span style="font-size:16px;">🎵</span>
+            <span style="font-size:8px;font-weight:600;color:var(--text);letter-spacing:0.04em;white-space:nowrap;">Lyrics</span>
+          </button>
+        </div>
       </div>
       <p class="detail-artist">${escHtml(bi.artists?.map(a=>a.name).join(', ')||'Unknown Artist')}</p>
       <div class="detail-grid">
@@ -828,6 +847,7 @@ async function openDetail(idx) {
   // Fetch full release details
   try {
     const data = await apiGet('/api/release/' + currentRecord.id);
+    window._currentReleaseData = data;
     renderDetailExtra(data);
   } catch(e) {
     document.getElementById('detail-extra').innerHTML = '';
@@ -1591,6 +1611,124 @@ function showVibeResult(pick, matchCount) {
       <button onclick="closeRandom()" style="font-size:11px;color:rgba(255,255,255,0.2);background:none;border:none;cursor:pointer;margin-top:8px;">Close</button>
     </div>
   `;
+}
+
+// ── LYRICS ──
+function openLyrics() {
+  if (!currentRecord) return;
+  const bi = currentRecord.basic_information;
+  const art = bi.cover_image || bi.thumb || '';
+
+  // Set header
+  document.getElementById('lyrics-rec-title').textContent = bi.title;
+  document.getElementById('lyrics-rec-sub').textContent = (bi.artists?.[0]?.name || '') + (bi.year ? ' · ' + bi.year : '');
+
+  const artWrap = document.getElementById('lyrics-art-wrap');
+  if (art && art !== 'https://st.discogs.com/') {
+    artWrap.innerHTML = '<img class="chat-record-art" src="' + art + '" alt="">';
+  } else {
+    artWrap.innerHTML = '<div class="chat-record-art-placeholder"><div style="width:20px;height:20px;border-radius:50%;background:var(--disc);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;"><div style="width:4px;height:4px;border-radius:50%;background:var(--artbg);"></div></div></div>';
+  }
+
+  // Show tracklist to pick a song
+  showTrackPicker(bi);
+  document.getElementById('lyrics-panel').classList.add('open');
+}
+
+function closeLyrics() {
+  document.getElementById('lyrics-panel').classList.remove('open');
+}
+
+function showTrackPicker(bi) {
+  const body = document.getElementById('lyrics-body');
+
+  // Get tracklist from full release data if available, fallback to basic
+  const tracks = (window._currentReleaseData && window._currentReleaseData.tracklist)
+    ? window._currentReleaseData.tracklist.filter(t => t.type_ !== 'heading' && t.title)
+    : [];
+
+  if (tracks.length === 0) {
+    body.innerHTML = '<p style="color:var(--subtext);font-size:13px;text-align:center;margin-top:40px;">Loading track list...<br><br>'
+      + '<span style="font-size:11px;">Open the record detail first to load tracks.</span></p>';
+    return;
+  }
+
+  let html = '<p style="font-size:11px;color:var(--subtext);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px;">Select a track</p>';
+  let sideLabel = '';
+  tracks.forEach((t, i) => {
+    const pos = t.position || '';
+    const newSide = pos.match(/^[A-Z]/)?.[0];
+    if (newSide && newSide !== sideLabel) {
+      sideLabel = newSide;
+      html += '<p style="font-size:10px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;padding:10px 0 4px;">Side ' + sideLabel + '</p>';
+    }
+    html += '<div onclick="fetchLyrics(' + i + ')" style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:var(--border-w) solid var(--border);cursor:pointer;">'
+      + '<span style="font-size:11px;color:var(--subtext);min-width:20px;text-align:right;">' + escHtml(pos) + '</span>'
+      + '<span style="font-size:14px;color:var(--text);flex:1;">' + escHtml(t.title) + '</span>'
+      + (t.duration ? '<span style="font-size:11px;color:var(--subtext);">' + escHtml(t.duration) + '</span>' : '')
+      + '<span style="font-size:14px;color:var(--subtext);">›</span>'
+      + '</div>';
+  });
+
+  body.innerHTML = html;
+}
+
+async function fetchLyrics(trackIdx) {
+  if (!currentRecord || !window._currentReleaseData) return;
+  const bi = currentRecord.basic_information;
+  const tracks = window._currentReleaseData.tracklist.filter(t => t.type_ !== 'heading' && t.title);
+  const track = tracks[trackIdx];
+  if (!track) return;
+
+  const artist = bi.artists?.[0]?.name || '';
+  const song = track.title;
+  const body = document.getElementById('lyrics-body');
+
+  // Show loading
+  body.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:16px;">'
+    + '<div style="width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;"></div>'
+    + '<p style="font-size:13px;color:var(--subtext);">Finding lyrics for "' + escHtml(song) + '"...</p>'
+    + '</div>';
+
+  try {
+    // Clean artist name - remove "The" variations, featured artists etc for better API match
+    const cleanArtist = artist.split('(')[0].replace(/feat[.].*$/i, '').trim();
+    const cleanSong = song.split('(')[0].trim();
+    const url = 'https://api.lyrics.ovh/v1/' + encodeURIComponent(cleanArtist) + '/' + encodeURIComponent(cleanSong);
+
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data.lyrics) {
+      // Format lyrics nicely
+      const formatted = (data.lyrics || '').trim();
+
+      body.innerHTML = '<div style="margin-bottom:16px;">'
+        + '<p style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:2px;">' + escHtml(song) + '</p>'
+        + '<p style="font-size:13px;color:var(--accent);margin-bottom:4px;">' + escHtml(artist) + '</p>'
+        + '<button onclick="showTrackPicker(currentRecord.basic_information)" style="font-size:11px;color:var(--subtext);background:none;border:none;cursor:pointer;padding:0;">← Back to tracks</button>'
+        + '</div>'
+        + '<div style="font-size:15px;color:var(--text);line-height:1.9;white-space:pre-wrap;font-family:var(--title-font);">'
+        + escHtml(formatted)
+        + '</div>'
+        + '<div style="height:40px;"></div>';
+    } else {
+      showLyricsNotFound(artist, song);
+    }
+  } catch(e) {
+    showLyricsNotFound(artist, song);
+  }
+}
+
+function showLyricsNotFound(artist, song) {
+  const geniusUrl = 'https://genius.com/search?q=' + encodeURIComponent(artist + ' ' + song);
+  document.getElementById('lyrics-body').innerHTML = '<div style="text-align:center;padding:60px 20px;">'
+    + '<p style="font-size:32px;margin-bottom:16px;">🎵</p>'
+    + '<p style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px;">Lyrics not found</p>'
+    + '<p style="font-size:13px;color:var(--subtext);margin-bottom:24px;line-height:1.6;">Lyrics not available for "' + escHtml(song) + '". Try searching Genius:</p>'
+    + '<a href="' + geniusUrl + '" target="_blank" style="background:var(--accent);color:var(--accent-text);text-decoration:none;padding:12px 24px;border-radius:var(--btn-shape);font-size:14px;font-weight:600;display:inline-block;">Search on Genius ↗</a>'
+    + '<div style="margin-top:20px;"><button onclick="showTrackPicker(currentRecord.basic_information)" style="font-size:11px;color:var(--subtext);background:none;border:none;cursor:pointer;">Back to tracks</button></div>'
+    + '</div>';
 }
 
 // ── AI CHAT ──
