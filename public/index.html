@@ -350,7 +350,8 @@
     .app-container { max-width: 100%; margin: 0; }
 
     /* Main layout: fixed left sidebar + scrollable right */
-    #app { display: flex; height: 100vh; overflow: hidden; }
+    #app { height: 100vh; overflow: hidden; }
+    #app-content { display: flex; height: 100vh; overflow: hidden; max-width: 100%; }
 
     /* Left sidebar */
     #desktop-sidebar {
@@ -393,12 +394,16 @@
     .list-view { padding: 0 20px; }
     .record-card { border-radius: calc(var(--radius) + 2px); }
 
-    /* Overlays full screen on desktop */
+    /* Overlays centered on desktop */
     .detail-overlay, .random-overlay, .settings-panel {
-      max-width: 680px !important;
-      margin-left: -340px !important;
+      max-width: 720px !important;
+      margin-left: -360px !important;
       left: 50% !important;
-      border-radius: 0;
+    }
+    .chat-panel, #lyrics-panel {
+      max-width: 720px !important;
+      margin-left: -360px !important;
+      left: 50% !important;
     }
 
     /* FAB position */
