@@ -132,12 +132,9 @@ app.get('/api/collection', async (req, res) => {
   const sk = req.query.sk;
   if (!sk) return res.status(401).json({ error: 'Not authenticated' });
   const stored = tokenStore.get(sk);
-  if (!stored) return res.status(401).json({ error: 'Session expired, please login again' });
+  if (!stored) return res.status(401).json({ error: 'Session expired' });
   try {
     const { username, accessToken, accessSecret } = stored;
-    console.log('Fetching collection for:', username);
-    console.log('Token starts with:', accessToken ? accessToken.substring(0,8) : 'NONE');
-    console.log('Secret starts with:', accessSecret ? accessSecret.substring(0,8) : 'NONE');
     let page = 1, all = [];
     while (true) {
       const data = await discogsGet(
@@ -151,6 +148,9 @@ app.get('/api/collection', async (req, res) => {
     res.json({ releases: all, total: all.length, username });
   } catch(e) {
     console.error('Collection error:', e.message);
+    if (e.message && e.message.includes('403')) {
+      return res.status(403).json({ error: 'private_collection' });
+    }
     res.status(500).json({ error: e.message });
   }
 });
