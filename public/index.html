@@ -491,12 +491,7 @@ function buildPresetList() {
       + '<span style="font-size:10px;font-weight:700;color:' + p.text + ';font-family:' + p.titleFont + ';">Wax</span>'
       + '<div style="width:18px;height:18px;border-radius:50%;background:' + p.card + ';border:0.5px solid ' + p.border + ';"></div>'
       + '</div>'
-      + '<div style="margin-bottom:6px;border-radius:6px;overflow:hidden;border:0.5px solid ' + p.border + ';background:' + p.card + ';">'
-      + '<img src="https://i.discogs.com/e7Zq5yfCRhO3-J3CIBpMSIpOINqXZ5Y_KeqPXNYyuDs/rs:fit/g:sm/q:90/h:600/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTI0NDkw/NC0xNjkzOTIyNTUz/LTYwODkuanBlZw.jpeg" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;">'
-      + '<div style="padding:6px 8px;">'
-      + '<div style="font-size:9px;font-weight:500;color:' + p.text + ';font-family:' + p.titleFont + ';">The Dark Side of the Moon</div>'
-      + '<div style="font-size:8px;color:' + p.subtext + ';">Pink Floyd · 1973</div>'
-      + '</div></div>'
+      + (function(){ var artUrl='https://upload.wikimedia.org/wikipedia/en/3/3b/Dark_Side_of_the_Moon.png'; return '<div style="margin-bottom:6px;border-radius:6px;overflow:hidden;border:0.5px solid '+p.border+';background:'+p.card+';">'+'<img src="'+artUrl+'" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;" onerror="this.style.background=\''+p.artbg+'\';this.style.display=\'block\'">'+'<div style="padding:6px 8px;"><div style="font-size:9px;font-weight:500;color:'+p.text+';font-family:'+p.titleFont+';">The Dark Side of the Moon</div><div style="font-size:8px;color:'+p.subtext+';">Pink Floyd · 1973</div></div></div>'; })()
       + '<div style="display:flex;gap:4px;margin-bottom:8px;">'
       + '<div style="font-size:8px;padding:3px 8px;border-radius:10px;background:' + p.accent + ';color:' + p.accenttext + ';">All</div>'
       + '<div style="font-size:8px;padding:3px 8px;border-radius:10px;background:' + p.card + ';border:0.5px solid ' + p.border + ';color:' + p.subtext + ';">Rock</div>'
