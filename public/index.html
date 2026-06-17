@@ -1330,9 +1330,10 @@ function runVibePicker(c) {
     }
     renderVibeUI(c);
   } catch(e) {
-    console.error('Vibe picker error:', e);
+    console.error('Vibe picker error:', e.message, e.stack);
     c.innerHTML = '<div style="text-align:center;padding:40px 20px;">'
-      + '<p style="color:rgba(255,255,255,0.6);margin-bottom:20px;">Something went wrong with the vibe picker.</p>'
+      + '<p style="color:rgba(255,255,255,0.6);margin-bottom:10px;">Vibe picker error:</p>'
+      + '<p style="color:rgba(255,100,100,0.8);font-size:11px;margin-bottom:20px;font-family:monospace;">' + e.message + '</p>'
       + '<button onclick="closeRandom()" style="background:var(--accent);border:none;border-radius:8px;padding:12px 24px;color:var(--accent-text);cursor:pointer;font-size:14px;">Close</button>'
       + '</div>';
   }
