@@ -1676,7 +1676,7 @@ function showTrackPicker(bi) {
 async function fetchLyrics(trackIdx) {
   if (!currentRecord || !window._currentReleaseData) return;
   const bi = currentRecord.basic_information;
-  const tracks = window._currentReleaseData.tracklist.filter(t => t.type_ !== 'heading' && t.title);
+  const tracks = window._currentReleaseData.tracklist.filter(function(t) { return t.type_ !== 'heading' && t.title; });
   const track = tracks[trackIdx];
   if (!track) return;
 
@@ -1684,40 +1684,77 @@ async function fetchLyrics(trackIdx) {
   const song = track.title;
   const body = document.getElementById('lyrics-body');
 
-  // Show loading
   body.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:16px;">'
     + '<div style="width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;"></div>'
-    + '<p style="font-size:13px;color:var(--subtext);">Finding lyrics for "' + escHtml(song) + '"...</p>'
+    + '<p style="font-size:13px;color:var(--subtext);">Finding lyrics...</p>'
     + '</div>';
 
-  try {
-    // Clean artist name - remove "The" variations, featured artists etc for better API match
-    const cleanArtist = artist.split('(')[0].replace(/feat[.].*$/i, '').trim();
-    const cleanSong = song.split('(')[0].trim();
-    const url = 'https://api.lyrics.ovh/v1/' + encodeURIComponent(cleanArtist) + '/' + encodeURIComponent(cleanSong);
+  // Try multiple name variants for better API coverage
+  const cleanArtist = artist.split('(')[0].split('feat')[0].trim();
+  const cleanSong = song.split('(')[0].trim();
+  const cleanArtist2 = cleanArtist.replace(/[^a-zA-Z0-9 ]/g, '').trim();
+  const cleanSong2 = cleanSong.replace(/[^a-zA-Z0-9 ]/g, '').trim();
 
-    const res = await fetch(url);
-    const data = await res.json();
+  const attempts = [
+    [cleanArtist, cleanSong],
+    [cleanArtist2, cleanSong],
+    [cleanArtist, cleanSong2],
+    [cleanArtist2, cleanSong2],
+  ];
 
-    if (data.lyrics) {
-      // Format lyrics nicely
-      const formatted = (data.lyrics || '').trim();
+  let found = null;
+  for (let i = 0; i < attempts.length && !found; i++) {
+    const a = attempts[i][0];
+    const s = attempts[i][1];
+    if (!a || !s) continue;
+    try {
+      const url = 'https://api.lyrics.ovh/v1/' + encodeURIComponent(a) + '/' + encodeURIComponent(s);
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.lyrics && data.lyrics.trim().length > 10) {
+          found = data.lyrics.trim();
+        }
+      }
+    } catch(e) {}
+  }
 
-      body.innerHTML = '<div style="margin-bottom:16px;">'
-        + '<p style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:2px;">' + escHtml(song) + '</p>'
-        + '<p style="font-size:13px;color:var(--accent);margin-bottom:4px;">' + escHtml(artist) + '</p>'
-        + '<button onclick="showTrackPicker(currentRecord.basic_information)" style="font-size:11px;color:var(--subtext);background:none;border:none;cursor:pointer;padding:0;">← Back to tracks</button>'
-        + '</div>'
-        + '<div style="font-size:15px;color:var(--text);line-height:1.9;white-space:pre-wrap;font-family:var(--title-font);">'
-        + escHtml(formatted)
-        + '</div>'
-        + '<div style="height:40px;"></div>';
-    } else {
+  if (found) {
+    showLyricsText(song, artist, found);
+  } else {
+    // Fall back to Genius
+    body.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:16px;">'
+      + '<div style="width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;"></div>'
+      + '<p style="font-size:13px;color:var(--subtext);">Trying Genius...</p>'
+      + '</div>';
+    try {
+      const sk = getSK();
+      const gRes = await fetch('/api/lyrics?sk=' + sk
+        + '&artist=' + encodeURIComponent(cleanArtist)
+        + '&song=' + encodeURIComponent(cleanSong));
+      const gData = await gRes.json();
+      if (gData.lyrics) {
+        showLyricsText(gData.title || song, gData.artist || artist, gData.lyrics);
+      } else {
+        showLyricsNotFound(artist, song);
+      }
+    } catch(e) {
       showLyricsNotFound(artist, song);
     }
-  } catch(e) {
-    showLyricsNotFound(artist, song);
   }
+}
+
+function showLyricsText(song, artist, lyrics) {
+  const body = document.getElementById('lyrics-body');
+  body.innerHTML = '<div style="margin-bottom:16px;">'
+    + '<p style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:2px;">' + escHtml(song) + '</p>'
+    + '<p style="font-size:13px;color:var(--accent);margin-bottom:8px;">' + escHtml(artist) + '</p>'
+    + '<button onclick="showTrackPicker(currentRecord.basic_information)" style="font-size:11px;color:var(--subtext);background:none;border:none;cursor:pointer;padding:0;">Back to tracks</button>'
+    + '</div>'
+    + '<div style="font-size:15px;color:var(--text);line-height:1.9;white-space:pre-wrap;font-family:var(--title-font);">'
+    + escHtml(lyrics)
+    + '</div>'
+    + '<div style="height:40px;"></div>';
 }
 
 function showLyricsNotFound(artist, song) {
