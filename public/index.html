@@ -745,21 +745,55 @@ async function openDetail(idx) {
   }
 }
 
-function selectArtwork(el) {
-  const strip = document.getElementById('art-strip');
-  if (!strip) return;
-  const imgs = strip.querySelectorAll('img');
-  imgs.forEach(img => {
-    img.style.width = '80px';
-    img.style.height = '80px';
-    img.style.borderColor = 'var(--border)';
+function artThumbTap(idx) {
+  const car = document.getElementById('art-carousel');
+  if (!car) return;
+  const srcs = window._artSrcs || [];
+  car.dataset.current = idx;
+  car.dataset.expanded = 'true';
+  // Show expanded
+  document.getElementById('art-expanded').style.display = 'block';
+  document.getElementById('art-big').src = srcs[idx];
+  document.getElementById('art-counter').textContent = (idx+1) + ' / ' + srcs.length;
+  // Highlight active thumb
+  car.querySelectorAll('#art-thumbs img').forEach((img, i) => {
+    img.style.borderColor = i === idx ? 'var(--accent)' : 'var(--border)';
   });
-  el.style.width = '100%';
-  el.style.height = 'auto';
-  el.style.borderColor = 'var(--accent)';
-  // Scroll the strip so selected image is visible
-  el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  // Scroll active thumb into view
+  const thumbs = car.querySelectorAll('#art-thumbs img');
+  if (thumbs[idx]) thumbs[idx].scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
 }
+
+function artNav(dir) {
+  const car = document.getElementById('art-carousel');
+  if (!car) return;
+  const srcs = window._artSrcs || [];
+  let idx = parseInt(car.dataset.current) + dir;
+  if (idx < 0) idx = srcs.length - 1;
+  if (idx >= srcs.length) idx = 0;
+  artThumbTap(idx);
+}
+
+function artCollapse() {
+  const car = document.getElementById('art-carousel');
+  if (!car) return;
+  document.getElementById('art-expanded').style.display = 'none';
+  // Reset thumb borders
+  car.querySelectorAll('#art-thumbs img').forEach((img, i) => {
+    img.style.borderColor = i === 0 ? 'var(--accent)' : 'var(--border)';
+  });
+}
+
+// Touch swipe for artwork carousel
+let _artTouchX = 0;
+document.addEventListener('touchstart', function(e) {
+  if (e.target.id === 'art-big') _artTouchX = e.touches[0].clientX;
+}, {passive:true});
+document.addEventListener('touchend', function(e) {
+  if (e.target.id !== 'art-big') return;
+  const dx = e.changedTouches[0].clientX - _artTouchX;
+  if (Math.abs(dx) > 40) artNav(dx < 0 ? 1 : -1);
+}, {passive:true});
 
 function renderDetailExtra(d) {
   const el = document.getElementById('detail-extra');
@@ -767,19 +801,30 @@ function renderDetailExtra(d) {
 
   let html = '';
 
-  // All artwork - full res images, scroll-synced zoom
+  // All artwork - carousel
   if (d.images && d.images.length > 1) {
     const imgs = d.images.slice(0,8);
+    const srcs = imgs.map(img => img.uri || img.uri150 || '');
+    const srcsJson = JSON.stringify(srcs);
+    // Store srcs in global for carousel use
+    window._artSrcs = srcs;
     html += '<div class="detail-section-title">Artwork</div>'
-      + '<div id="art-strip" style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;margin-bottom:16px;scroll-snap-type:x mandatory;">'
-      + imgs.map((img, i) => {
-          const src = img.uri || img.uri150 || '';
-          return '<img src="' + src + '" alt="Artwork" data-idx="' + i + '"'
+      + '<div id="art-carousel">'
+      + '<div id="art-thumbs" style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;margin-bottom:8px;">'
+      + srcs.map(function(src, i) {
+          return '<img src="' + src + '" alt="Artwork"'
             + ' style="width:80px;height:80px;object-fit:cover;border-radius:var(--radius);flex-shrink:0;'
-            + 'border:var(--border-w) solid var(--border);cursor:pointer;scroll-snap-align:start;'
-            + 'transition:width 0.25s,height 0.25s,border-color 0.2s;"'
-            + ' onclick="selectArtwork(this)">';
+            + 'border:2px solid ' + (i===0?'var(--accent)':'var(--border)') + ';cursor:pointer;"'
+            + ' onclick="artThumbTap(' + i + ')">';
         }).join('')
+      + '</div>'
+      + '<div id="art-expanded" style="display:none;margin-bottom:16px;">'
+      + '<img id="art-big" src="' + srcs[0] + '" style="width:100%;border-radius:var(--radius);border:var(--border-w) solid var(--border);cursor:pointer;display:block;" onclick="artCollapse()">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">'
+      + '<button onclick="artNav(-1)" style="background:var(--card);border:var(--border-w) solid var(--border);border-radius:50%;width:36px;height:36px;font-size:16px;cursor:pointer;color:var(--text);">&#8249;</button>'
+      + '<span id="art-counter" style="font-size:11px;color:var(--subtext);">1 / ' + srcs.length + '</span>'
+      + '<button onclick="artNav(1)" style="background:var(--card);border:var(--border-w) solid var(--border);border-radius:50%;width:36px;height:36px;font-size:16px;cursor:pointer;color:var(--text);">&#8250;</button>'
+      + '</div></div>'
       + '</div>';
   }
 
