@@ -829,7 +829,7 @@ function closeDetail() {
 
 // ── PICKER STYLES ──
 let pickerStyle = localStorage.getItem('wax_picker') || 'crate';
-let vibeSelections = { mood: [], time: null, setting: null, genre: [] };
+let vibeSelections = { mood: [], setting: null, genre: [] };
 
 function openRandom() {
   if (!releases.length) return;
@@ -1305,12 +1305,7 @@ const VIBE_MAP = {
     'Late night':  { genres:['Jazz','Electronic','Hip Hop','Blues'], styles:['Neo Soul','Downtempo','Ambient','Trip Hop'] },
     'Background':  { genres:['Jazz','Classical','Electronic','Pop'], styles:['Easy Listening','Ambient','Vocal','Smooth Jazz'] },
   },
-  time: {
-    'Morning':     { genres:['Folk, World, & Country','Jazz','Pop','Classical'], styles:['Acoustic','Singer-Songwriter','Vocal'] },
-    'Afternoon':   { genres:['Rock','Pop','Funk / Soul','Hip Hop'], styles:['Alternative Rock','Indie Rock','Funk'] },
-    'Evening':     { genres:['Jazz','Rock','Blues','Soul'], styles:['Soul','Blues','Classic Rock','Jazz'] },
-    'After hours': { genres:['Electronic','Jazz','Hip Hop'], styles:['Ambient','Trip Hop','Neo Soul','Downtempo'] },
-  },
+
   setting: {
     'Solo':           { genres:['Rock','Jazz','Electronic','Classical','Hip Hop'], styles:['Progressive Rock','Art Rock','Experimental','Singer-Songwriter'] },
     'Headphones':     { genres:['Electronic','Hip Hop','Jazz','Classical'], styles:['Ambient','Trip Hop','Experimental','Neo-Classical','Downtempo'] },
@@ -1327,7 +1322,7 @@ function runVibePicker(c) {
   try {
     const hour = new Date().getHours();
     const autoTime = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : hour < 21 ? 'Evening' : 'Late night';
-    // No auto-selection - user picks everything
+
     renderVibeUI(c);
   } catch(e) {
     console.error('Vibe picker error:', e.message, e.stack);
@@ -1359,18 +1354,7 @@ function renderVibeUI(c) {
   });
   html += '</div></div>';
 
-  // Time
-  html += '<div style="margin-bottom:12px;text-align:left;">';
-  html += '<p style="font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Time of day</p>';
-  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
-  Object.keys(VIBE_MAP.time).forEach(t => {
-    const active = vibeSelections.time === t;
-    html += '<button class="vibe-btn" data-type="time" data-val="' + t + '" style="font-size:11px;padding:6px 10px;border-radius:16px;cursor:pointer;'
-      + 'border:0.5px solid ' + (active ? 'var(--accent)' : 'rgba(255,255,255,0.2)') + ';'
-      + 'background:' + (active ? 'var(--accent)' : 'rgba(255,255,255,0.05)') + ';'
-      + 'color:' + (active ? 'var(--accent-text)' : 'rgba(255,255,255,0.7)') + ';">' + t + '</button>';
-  });
-  html += '</div></div>';
+
 
   // Setting
   html += '<div style="margin-bottom:12px;text-align:left;">';
@@ -1400,7 +1384,7 @@ function renderVibeUI(c) {
 
   // Match count
   const scored = scoreCollection();
-  const hasFilters = vibeSelections.mood.length > 0 || vibeSelections.time || vibeSelections.setting || vibeSelections.genre.length > 0;
+  const hasFilters = vibeSelections.mood.length > 0 || vibeSelections.setting || vibeSelections.genre.length > 0;
   html += '<p style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:10px;">'
     + (hasFilters ? scored.length + ' records match your vibe' : 'Select options to filter your collection') + '</p>';
 
@@ -1434,9 +1418,9 @@ function renderVibeUI(c) {
   if (pickBtn) pickBtn.addEventListener('click', () => {
     try {
       const pool = scoreCollection();
-      const hasFilters = vibeSelections.mood.length > 0 || vibeSelections.time || vibeSelections.setting || vibeSelections.genre.length > 0;
+      const hasFilters = vibeSelections.mood.length > 0 || vibeSelections.setting || vibeSelections.genre.length > 0;
       const pick = (hasFilters && pool.length > 0)
-        ? pool[Math.floor(Math.random() * Math.min(pool.length, 10))]
+        ? pool[Math.floor(Math.random() * Math.min(pool.length, 50))]
         : { record: releases[Math.floor(Math.random() * releases.length)], score: 0 };
       randomRecord = pick.record;
       soundVibeReveal();
@@ -1476,14 +1460,7 @@ function scoreCollection() {
       });
     }
 
-    // Time match
-    if (vibeSelections.time) {
-      const map = VIBE_MAP.time[vibeSelections.time];
-      if (map) {
-        map.genres.forEach(g => { if (genres.includes(g)) score += 2; });
-        map.styles.forEach(s => { if (styles.includes(s)) score += 1; });
-      }
-    }
+
 
     // Setting match
     if (vibeSelections.setting) {
@@ -1784,21 +1761,28 @@ function soundCrateThud() {
 }
 
 function soundCrateFlip() {
-  // Soft whoosh of a record cover sliding past
+  // Record sleeve whoosh - like flicking through a crate
   try {
     const ctx = getAudioCtx();
-    const dur = 0.12;
+    const dur = 0.18;
     const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
     const d = buf.getChannelData(0);
     for (let i = 0; i < d.length; i++) {
       const t = i / ctx.sampleRate;
-      d[i] = (Math.random()*2-1) * Math.sin(Math.PI * t/dur) * 0.4;
+      // Sharp attack, quick decay - paper flick sound
+      const env = Math.sin(Math.PI * t / dur) * Math.exp(-t * 12);
+      d[i] = (Math.random() * 2 - 1) * env;
     }
     const src = ctx.createBufferSource();
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass'; filter.frequency.value = 600;
-    const gain = ctx.createGain(); gain.gain.value = 0.12;
-    src.buffer = buf; src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+    // Two filters: highpass for papery brightness + lowpass to remove harshness
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 400;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 4000;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.55; // noticeably louder
+    src.buffer = buf;
+    src.connect(hp); hp.connect(lp); lp.connect(gain); gain.connect(ctx.destination);
     src.start();
   } catch(e) {}
 }
