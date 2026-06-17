@@ -269,16 +269,7 @@
 
 
   /* ── AI CHAT ── */
-  .chat-bubble {
-    position: fixed; bottom: 28px; right: calc(50% - 215px + 16px);
-    width: 52px; height: 52px; border-radius: 50%;
-    background: var(--accent); border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px; z-index: 520; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-    transition: transform 0.15s, opacity 0.2s;
-  }
-  .chat-bubble:active { transform: scale(0.92); }
-  .chat-bubble.hidden { opacity: 0; pointer-events: none; }
+
 
   .chat-panel {
     position: fixed; inset: 0; z-index: 510;
@@ -501,11 +492,6 @@
     </div>
   </div>
 </div>
-
-<!-- Floating chat bubble - visible when detail view is open -->
-<button class="chat-bubble" id="chat-bubble" onclick="startAiChat()" title="Chat about this record" style="display:none;">
-  💬
-</button>
 
 <!-- AI Chat Panel -->
 <div class="chat-panel" id="chat-panel">
@@ -811,7 +797,13 @@ async function openDetail(idx) {
         : `<div class="detail-hero-placeholder"><div class="detail-hero-disc"><div class="detail-hero-hole"></div></div></div>`}
     </div>
     <div class="detail-body">
-      <h1 class="detail-title">${escHtml(bi.title)}</h1>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px;">
+        <h1 class="detail-title" style="margin-bottom:0;">${escHtml(bi.title)}</h1>
+        <button onclick="startAiChat()" style="flex-shrink:0;background:var(--accent);border:none;border-radius:10px;padding:8px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:4px;">
+          <span style="font-size:16px;">✨</span>
+          <span style="font-size:8px;font-weight:600;color:var(--accent-text);letter-spacing:0.04em;white-space:nowrap;">AI Chat</span>
+        </button>
+      </div>
       <p class="detail-artist">${escHtml(bi.artists?.map(a=>a.name).join(', ')||'Unknown Artist')}</p>
       <div class="detail-grid">
         <div class="detail-chip"><div class="detail-chip-label">Year</div><div class="detail-chip-val">${bi.year||'—'}</div></div>
@@ -832,7 +824,6 @@ async function openDetail(idx) {
     </div>
   `;
   overlay.classList.add('open');
-  document.getElementById('chat-bubble').style.display = 'flex';
 
   // Fetch full release details
   try {
@@ -925,7 +916,6 @@ function renderDetailExtra(d) {
 
 function closeDetail() {
   document.getElementById('detail-overlay').classList.remove('open');
-  document.getElementById('chat-bubble').style.display = 'none';
 }
 
 
