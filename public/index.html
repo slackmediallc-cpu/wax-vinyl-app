@@ -529,7 +529,7 @@
       <div class="settings-section-title" style="margin-bottom:12px;">Choose a theme</div>
       <div id="preset-list" style="display:flex;flex-direction:column;gap:10px;"></div>
     </div>
-    <div style="text-align:center;font-size:9px;color:var(--subtext);padding:4px 0 18px;opacity:0.6;">build: grid-fix-3</div>
+    <div style="text-align:center;font-size:9px;color:var(--subtext);padding:4px 0 18px;opacity:0.6;">build: grid-fix-4</div>
   </div>
 </div>
 
@@ -875,15 +875,26 @@ function artImg(url, cls, placeholder) {
 const discPlaceholder = `<div class="disc-icon"><div class="disc-hole"></div></div>`;
 const discPlaceholderSm = `<div style="width:28px;height:28px;border-radius:50%;background:var(--disc);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;"><div style="width:5px;height:5px;border-radius:50%;background:var(--artbg);"></div></div>`;
 
-// Explicitly sets each grid art wrapper's height in pixels to match its width.
-// A pure-CSS percentage-padding square trick was unreliable once the grid grew
-// to ~260 items, so this measures and sets real heights instead. Reads are
-// batched before writes to avoid layout thrashing across hundreds of nodes.
+// Explicitly sets each grid card's height in pixels, computed from its actual
+// measured width plus its info block's height. Two different approaches that
+// let CSS Grid auto-size the row from content (a padding-top percentage trick,
+// then a height set on a descendant) both proved unreliable at ~260 items in
+// testing. Setting an explicit, definite height directly on the grid item
+// itself removes all ambiguity from Grid's auto-row-sizing algorithm — there's
+// nothing left for it to get wrong. Reads are batched before writes to avoid
+// layout thrashing across hundreds of nodes.
 function sizeGridArt() {
-  const wraps = document.querySelectorAll('.record-art-wrap');
-  if (!wraps.length) return;
-  const widths = Array.prototype.map.call(wraps, function(w) { return w.offsetWidth; });
-  wraps.forEach(function(w, i) { w.style.height = widths[i] + 'px'; });
+  const cards = document.querySelectorAll('.record-card');
+  if (!cards.length) return;
+  const measurements = Array.prototype.map.call(cards, function(card) {
+    const wrap = card.querySelector('.record-art-wrap');
+    const info = card.querySelector('.record-info');
+    return { card: card, wrap: wrap, width: card.offsetWidth, infoHeight: info ? info.offsetHeight : 0 };
+  });
+  measurements.forEach(function(m) {
+    if (m.wrap) m.wrap.style.height = m.width + 'px';
+    m.card.style.height = (m.width + m.infoHeight) + 'px';
+  });
 }
 
 function renderCollection() {
