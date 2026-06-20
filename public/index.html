@@ -518,10 +518,9 @@
 
     <div style="padding:16px;border-bottom:var(--border-w) solid var(--border);">
       <div class="settings-section-title" style="margin-bottom:10px;">Your collection</div>
-      <p style="font-size:12px;color:var(--subtext);line-height:1.6;margin-bottom:10px;">Add records by searching or scanning a barcode — no Discogs account needed.</p>
+      <p style="font-size:12px;color:var(--subtext);line-height:1.6;margin-bottom:10px;">Add records by searching — no Discogs account needed.</p>
       <div style="display:flex;gap:8px;">
-        <button onclick="openAddRecord('search')" style="flex:1;font-size:13px;padding:10px;background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);cursor:pointer;font-family:inherit;font-weight:600;">🔍 Search</button>
-        <button onclick="openAddRecord('scan')" style="flex:1;font-size:13px;padding:10px;background:var(--card);border:var(--border-w) solid var(--border);color:var(--text);border-radius:var(--radius);cursor:pointer;font-family:inherit;font-weight:600;">📷 Scan Barcode</button>
+        <button onclick="openAddRecord()" style="flex:1;font-size:13px;padding:10px;background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);cursor:pointer;font-family:inherit;font-weight:600;">🔍 Search</button>
       </div>
     </div>
 
@@ -532,12 +531,12 @@
   </div>
 </div>
 
-<!-- Add Record Panel (search / scan) -->
+<!-- Add Record Panel -->
 <div class="chat-panel" id="add-record-panel">
   <div class="chat-record-header" style="cursor:default;">
     <div class="chat-record-info">
       <div class="chat-record-title">Add a record</div>
-      <div class="chat-record-sub" id="add-record-mode-label">Search</div>
+      <div class="chat-record-sub">Search Discogs</div>
     </div>
     <button class="chat-close-btn" onclick="closeAddRecord()">&#8595;</button>
   </div>
@@ -884,8 +883,7 @@ function renderCollection() {
       <div class="empty-title">Your collection is empty</div>
       <div class="empty-sub" style="margin-bottom:20px;">Add your first record to get started.</div>
       <div style="display:flex;flex-direction:column;gap:10px;width:100%;">
-        <button onclick="openAddRecord('search')" style="background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);padding:14px;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px;">🔍 Search for a record</button>
-        <button onclick="openAddRecord('scan')" style="background:var(--card);border:var(--border-w) solid var(--border);color:var(--text);border-radius:var(--radius);padding:14px;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px;">📷 Scan a barcode</button>
+        <button onclick="openAddRecord()" style="background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);padding:14px;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px;">🔍 Search for a record</button>
         ${!discogsLinked ? `<button onclick="startDiscogsLink()" style="background:transparent;border:var(--border-w) solid var(--border);color:var(--text);border-radius:var(--radius);padding:14px;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px;">Connect Discogs to sync your collection</button>` : ''}
       </div>
     </div>`;
@@ -2245,25 +2243,14 @@ function reconnect() {
 }
 
 // Kept as the "sign in with a different account" fallback on the private-collection screen
-// ── ADD RECORD (search / scan) ──
-let addRecordMode = 'search';
-let scanStream = null;
-let scanActive = false;
-
-function openAddRecord(mode) {
-  addRecordMode = mode || 'search';
-  document.getElementById('add-record-mode-label').textContent = addRecordMode === 'search' ? 'Search' : 'Scan Barcode';
+// ── ADD RECORD (search) ──
+function openAddRecord() {
   document.getElementById('add-record-panel').classList.add('open');
-  if (addRecordMode === 'search') {
-    renderSearchUI();
-  } else {
-    renderScanUI();
-  }
+  renderSearchUI();
 }
 
 function closeAddRecord() {
   document.getElementById('add-record-panel').classList.remove('open');
-  stopBarcodeScan();
 }
 
 function renderSearchUI() {
@@ -2355,107 +2342,6 @@ async function confirmAddRecord(idx) {
     }
   }
 }
-
-function renderScanUI() {
-  const body = document.getElementById('add-record-body');
-  body.innerHTML = '<div style="text-align:center;">'
-    + '<div style="position:relative;width:100%;aspect-ratio:4/3;background:#000;border-radius:var(--radius);overflow:hidden;margin-bottom:16px;">'
-    + '<video id="scan-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>'
-    + '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">'
-    + '<div style="width:70%;height:35%;border:2px solid var(--accent);border-radius:8px;"></div>'
-    + '</div>'
-    + '</div>'
-    + '<p id="scan-status" style="font-size:13px;color:var(--subtext);margin-bottom:16px;">Point your camera at the barcode</p>'
-    + '<div id="scan-manual-fallback" style="display:none;">'
-    + '<p style="font-size:12px;color:var(--subtext);margin-bottom:8px;">Or type the barcode manually:</p>'
-    + '<div style="display:flex;gap:8px;">'
-    + '<input id="manual-barcode-input" type="text" inputmode="numeric" placeholder="UPC barcode number" style="flex:1;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;">'
-    + '<button onclick="lookupBarcode(document.getElementById(\'manual-barcode-input\').value)" style="background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);padding:0 18px;cursor:pointer;font-weight:600;">Go</button>'
-    + '</div>'
-    + '</div>'
-    + '<button onclick="document.getElementById(\'scan-manual-fallback\').style.display=\'block\';this.style.display=\'none\';" id="show-manual-btn" style="background:none;border:none;color:var(--subtext);font-size:12px;cursor:pointer;margin-top:8px;text-decoration:underline;">Enter barcode manually instead</button>'
-    + '<div id="scan-results"></div>'
-    + '</div>';
-  startBarcodeScan();
-}
-
-async function startBarcodeScan() {
-  const video = document.getElementById('scan-video');
-  const status = document.getElementById('scan-status');
-  try {
-    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    video.srcObject = scanStream;
-    scanActive = true;
-
-    if ('BarcodeDetector' in window) {
-      const detector = new BarcodeDetector({ formats: ['ean_13', 'upc_a', 'upc_e', 'ean_8'] });
-      scanLoop(video, detector, status);
-    } else {
-      status.textContent = 'Live scanning not supported on this browser — enter the barcode manually below.';
-      document.getElementById('scan-manual-fallback').style.display = 'block';
-      document.getElementById('show-manual-btn').style.display = 'none';
-    }
-  } catch(e) {
-    status.textContent = 'Camera access denied or unavailable — enter the barcode manually below.';
-    document.getElementById('scan-manual-fallback').style.display = 'block';
-    document.getElementById('show-manual-btn').style.display = 'none';
-  }
-}
-
-async function scanLoop(video, detector, status) {
-  if (!scanActive) return;
-  try {
-    const barcodes = await detector.detect(video);
-    if (barcodes.length > 0) {
-      scanActive = false;
-      status.textContent = 'Found it! Looking up...';
-      lookupBarcode(barcodes[0].rawValue);
-      return;
-    }
-  } catch(e) {}
-  if (scanActive) requestAnimationFrame(function() { scanLoop(video, detector, status); });
-}
-
-function stopBarcodeScan() {
-  scanActive = false;
-  if (scanStream) {
-    scanStream.getTracks().forEach(function(t) { t.stop(); });
-    scanStream = null;
-  }
-}
-
-async function lookupBarcode(code) {
-  code = (code || '').trim();
-  if (!code) return;
-  const resultsEl = document.getElementById('scan-results');
-  const statusEl = document.getElementById('scan-status');
-  if (statusEl) statusEl.textContent = 'Looking up barcode...';
-  if (resultsEl) resultsEl.innerHTML = '<div style="display:flex;justify-content:center;padding:20px 0;"><div style="width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;"></div></div>';
-  try {
-    const data = await apiGet('/api/barcode-lookup?code=' + encodeURIComponent(code));
-    const items = data.results || [];
-    if (items.length === 0) {
-      if (resultsEl) resultsEl.innerHTML = '<p style="text-align:center;color:var(--subtext);font-size:13px;padding:20px 0;">No match found for that barcode. Try the search tab instead.</p>';
-      return;
-    }
-    window._searchResultsCache = items;
-    if (resultsEl) {
-      resultsEl.innerHTML = '<p style="font-size:12px;color:var(--subtext);margin:16px 0 8px;">Found a match:</p>' + items.map(function(item, i) {
-        const img = item.coverImage || item.thumb || '';
-        return '<div onclick="confirmAddRecord(' + i + ')" style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:var(--border-w) solid var(--border);cursor:pointer;">'
-          + (img ? '<img src="' + img + '" style="width:48px;height:48px;border-radius:6px;object-fit:cover;flex-shrink:0;">' : '<div style="width:48px;height:48px;border-radius:6px;background:var(--artbg);flex-shrink:0;"></div>')
-          + '<div style="flex:1;min-width:0;">'
-          + '<div style="font-size:14px;font-weight:500;color:var(--text);">' + escHtml(item.title) + '</div>'
-          + '<div style="font-size:12px;color:var(--subtext);">' + escHtml([item.year, item.format].filter(Boolean).join(' · ')) + '</div>'
-          + '</div><span style="font-size:20px;color:var(--accent);">+</span></div>';
-      }).join('');
-    }
-  } catch(e) {
-    if (resultsEl) resultsEl.innerHTML = '<p style="text-align:center;color:var(--subtext);font-size:13px;padding:20px 0;">Lookup failed. Try again.</p>';
-  }
-}
-
-
 
 async function startDiscogsLink() {
   try {
