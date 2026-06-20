@@ -83,8 +83,9 @@
   }
   .record-card:active { transform: scale(0.97); }
   .record-card:hover { border-color: var(--accent); }
-  .record-art { width: 100%; aspect-ratio: 1; object-fit: cover; background: var(--artbg); display: block; }
-  .record-art-placeholder { width: 100%; aspect-ratio: 1; background: var(--artbg); display: flex; align-items: center; justify-content: center; }
+  .record-art-wrap { position: relative; width: 100%; padding-top: 100%; background: var(--artbg); }
+  .record-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: var(--artbg); display: block; }
+  .record-art-placeholder { position: absolute; inset: 0; width: 100%; height: 100%; background: var(--artbg); display: flex; align-items: center; justify-content: center; }
   .disc-icon { width: 52px; height: 52px; border-radius: 50%; background: var(--disc); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; }
   .disc-hole { width: 8px; height: 8px; border-radius: 50%; background: var(--bg); }
   .record-info { padding: 8px 10px; }
@@ -860,11 +861,14 @@ function filterAndRender() {
 }
 
 function artImg(url, cls, placeholder) {
-  if (url && url !== 'https://st.discogs.com/') {
-    return `<img class="${cls}" src="${url}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-    <div class="${cls.replace('record-art','record-art-placeholder').replace('list-art','list-art-placeholder')}" style="display:none;">${placeholder}</div>`;
-  }
-  return `<div class="${cls.replace('record-art','record-art-placeholder').replace('list-art','list-art-placeholder')}">${placeholder}</div>`;
+  const inner = (url && url !== 'https://st.discogs.com/')
+    ? `<img class="${cls}" src="${url}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <div class="${cls.replace('record-art','record-art-placeholder').replace('list-art','list-art-placeholder')}" style="display:none;">${placeholder}</div>`
+    : `<div class="${cls.replace('record-art','record-art-placeholder').replace('list-art','list-art-placeholder')}">${placeholder}</div>`;
+  // Grid art uses a fixed-aspect wrapper (padding-top:100%) instead of CSS aspect-ratio,
+  // which can fail to reserve layout space in Safari when there are many lazy-loaded
+  // images inside a CSS Grid container — exactly the case with a large synced collection.
+  return cls === 'record-art' ? `<div class="record-art-wrap">${inner}</div>` : inner;
 }
 
 const discPlaceholder = `<div class="disc-icon"><div class="disc-hole"></div></div>`;
