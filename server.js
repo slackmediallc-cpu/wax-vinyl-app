@@ -97,6 +97,28 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Temporary no-email password reset (confirms account by email, sets new password directly).
+// Note: this is intentionally permissive for early testing — anyone who knows the email
+// can reset the password. Replace with a real emailed reset-link flow before public launch.
+app.post('/api/auth/reset-password', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Database not configured' });
+  const { email, newPassword } = req.body || {};
+  if (!email || !newPassword) return res.status(400).json({ error: 'Email and new password required' });
+  if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  try {
+    const result = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase().trim()]);
+    const user = result.rows[0];
+    if (!user) return res.status(404).json({ error: 'No account found with that email' });
+    const hash = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, user.id]);
+    const token = signToken(user.id);
+    res.json({ ok: true, token });
+  } catch (e) {
+    console.error('Password reset error:', e.message);
+    res.status(500).json({ error: 'Could not reset password' });
+  }
+});
+
 app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
     const result = await pool.query('SELECT id, email, display_name, avatar_url, discogs_username, discogs_access_token FROM users WHERE id = $1', [req.userId]);
