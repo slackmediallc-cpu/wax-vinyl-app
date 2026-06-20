@@ -363,15 +363,28 @@ app.get('/api/collection', requireAuth, async (req, res) => {
   }
 });
 
-// ── Search Discogs database for a release to manually add ──
-app.get('/api/search-release', requireAuth, async (req, res) => {
-  const q = (req.query.q || '').trim();
-  if (!q) return res.status(400).json({ error: 'Missing search query' });
-  if (!DISCOGS_KEY || !DISCOGS_SECRET) return res.status(500).json({ error: 'Search not configured' });
-  try {
-    const url = `https://api.discogs.com/database/search?q=${encodeURIComponent(q)}&type=release&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}&per_page=20`;
-    const data = await discogsPublicGet(url);
-    const results = (data.results || []).map(r => ({
+// Discogs' database search returns every pressing/format/reissue/remaster of an
+// album as its own separate result. Group them by master_id (the field Discogs
+// uses to link all versions of the same release together) so the user sees one
+// representative entry per album instead of a dozen near-duplicates. Releases
+// with no master_id (singles, obscure pressings) fall back to their own id, so
+// they stay standalone rather than getting merged into the wrong group.
+function dedupeReleaseResults(raw, limit) {
+  const groups = new Map();
+  for (const r of raw) {
+    const key = r.master_id || r.id;
+    const formats = r.format || [];
+    const isVinyl = formats.some(f => /vinyl/i.test(f));
+    const existing = groups.get(key);
+    // Keep the first result we see for a group, but swap in a Vinyl pressing
+    // as the representative if we land on a non-Vinyl one first.
+    if (!existing || (isVinyl && !existing.isVinyl)) {
+      groups.set(key, { r, isVinyl });
+    }
+  }
+  return Array.from(groups.values())
+    .slice(0, limit)
+    .map(({ r }) => ({
       discogsId: r.id,
       title: r.title,
       year: r.year,
@@ -382,6 +395,18 @@ app.get('/api/search-release', requireAuth, async (req, res) => {
       coverImage: r.cover_image,
       thumb: r.thumb,
     }));
+}
+
+// ── Search Discogs database for a release to manually add ──
+app.get('/api/search-release', requireAuth, async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (!q) return res.status(400).json({ error: 'Missing search query' });
+  if (!DISCOGS_KEY || !DISCOGS_SECRET) return res.status(500).json({ error: 'Search not configured' });
+  try {
+    // Fetch a larger raw pool than we'll show, since most of it collapses into duplicates
+    const url = `https://api.discogs.com/database/search?q=${encodeURIComponent(q)}&type=release&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}&per_page=50`;
+    const data = await discogsPublicGet(url);
+    const results = dedupeReleaseResults(data.results || [], 15);
     res.json({ results });
   } catch(e) {
     console.error('Search error:', e.message);
@@ -395,19 +420,9 @@ app.get('/api/barcode-lookup', requireAuth, async (req, res) => {
   if (!barcode) return res.status(400).json({ error: 'Missing barcode' });
   if (!DISCOGS_KEY || !DISCOGS_SECRET) return res.status(500).json({ error: 'Search not configured' });
   try {
-    const url = `https://api.discogs.com/database/search?barcode=${encodeURIComponent(barcode)}&type=release&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}&per_page=10`;
+    const url = `https://api.discogs.com/database/search?barcode=${encodeURIComponent(barcode)}&type=release&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}&per_page=20`;
     const data = await discogsPublicGet(url);
-    const results = (data.results || []).map(r => ({
-      discogsId: r.id,
-      title: r.title,
-      year: r.year,
-      genre: (r.genre || [])[0] || '',
-      style: (r.style || [])[0] || '',
-      format: (r.format || [])[0] || '',
-      label: (r.label || [])[0] || '',
-      coverImage: r.cover_image,
-      thumb: r.thumb,
-    }));
+    const results = dedupeReleaseResults(data.results || [], 10);
     res.json({ results });
   } catch(e) {
     console.error('Barcode lookup error:', e.message);
