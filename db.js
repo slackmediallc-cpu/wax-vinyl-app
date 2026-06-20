@@ -3,13 +3,30 @@ const { Pool } = require('pg');
 const connectionString = (process.env.DATABASE_URL || '').trim();
 
 const pool = connectionString
-  ? new Pool({ connectionString, ssl: { rejectUnauthorized: false } })
+  ? new Pool({
+      connectionString,
+      ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false },
+    })
   : null;
+
+if (pool) {
+  pool.on('error', (err) => {
+    console.error('Unexpected database pool error:', err);
+  });
+}
 
 async function initSchema() {
   if (!pool) {
     console.warn('No DATABASE_URL set — database features disabled.');
     return;
+  }
+
+  try {
+    const test = await pool.query('SELECT NOW()');
+    console.log('Database connected OK:', test.rows[0].now);
+  } catch (e) {
+    console.error('Database connection test FAILED:', e.message, e.stack);
+    throw e;
   }
 
   await pool.query(`
