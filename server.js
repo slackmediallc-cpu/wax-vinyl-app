@@ -414,22 +414,6 @@ app.get('/api/search-release', requireAuth, async (req, res) => {
   }
 });
 
-// ── Barcode lookup via Discogs database search ──
-app.get('/api/barcode-lookup', requireAuth, async (req, res) => {
-  const barcode = (req.query.code || '').trim();
-  if (!barcode) return res.status(400).json({ error: 'Missing barcode' });
-  if (!DISCOGS_KEY || !DISCOGS_SECRET) return res.status(500).json({ error: 'Search not configured' });
-  try {
-    const url = `https://api.discogs.com/database/search?barcode=${encodeURIComponent(barcode)}&type=release&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}&per_page=20`;
-    const data = await discogsPublicGet(url);
-    const results = dedupeReleaseResults(data.results || [], 10);
-    res.json({ results });
-  } catch(e) {
-    console.error('Barcode lookup error:', e.message);
-    res.status(500).json({ error: 'Lookup failed' });
-  }
-});
-
 // ── Add a manually-found record to the user's collection ──
 app.post('/api/records', requireAuth, async (req, res) => {
   const { discogsId, title, artist, year, genre, style, format, label, coverImage, thumb } = req.body || {};
