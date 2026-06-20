@@ -370,25 +370,41 @@ app.get('/api/collection', requireAuth, async (req, res) => {
 });
 
 // Discogs' database search returns every pressing/format/reissue/remaster of an
-// album as its own separate result. Group them by master_id (the field Discogs
-// uses to link all versions of the same release together) so the user sees one
-// representative entry per album instead of a dozen near-duplicates. Releases
-// with no master_id (singles, obscure pressings) fall back to their own id, so
-// they stay standalone rather than getting merged into the wrong group.
+// album as its own separate result — AND, for a bare artist-name search, every
+// single, EP, compilation, and soundtrack appearance too. This does two things:
+// 1) Groups results by master_id (the field Discogs uses to link all versions of
+//    the same release together) so the user sees one representative entry per
+//    album instead of a dozen near-duplicate pressings. Releases with no
+//    master_id (singles, obscure pressings) fall back to their own id.
+// 2) Ranks proper studio albums above singles/EPs/compilations/etc., and within
+//    each tier sorts by how many Discogs users actually own the release
+//    (community.have) — so for a query like "smashing pumpkins", well-known
+//    albums like Siamese Dream surface before obscure 7" singles, without
+//    hiding those singles entirely (they're still there, just lower down).
+const NOISY_FORMAT_TAGS = ['single', 'ep', 'compilation', 'soundtrack', 'mixtape', 'split', 'promo'];
+
 function dedupeReleaseResults(raw, limit) {
   const groups = new Map();
   for (const r of raw) {
     const key = r.master_id || r.id;
-    const formats = r.format || [];
-    const isVinyl = formats.some(f => /vinyl/i.test(f));
+    const formats = (r.format || []).map(f => f.toLowerCase());
+    const isVinyl = formats.some(f => f.includes('vinyl'));
+    const isAlbum = formats.includes('album');
+    const isNoisy = formats.some(f => NOISY_FORMAT_TAGS.includes(f));
+    const have = (r.community && r.community.have) || 0;
     const existing = groups.get(key);
     // Keep the first result we see for a group, but swap in a Vinyl pressing
     // as the representative if we land on a non-Vinyl one first.
     if (!existing || (isVinyl && !existing.isVinyl)) {
-      groups.set(key, { r, isVinyl });
+      groups.set(key, { r, isVinyl, isAlbum, isNoisy, have });
     }
   }
   return Array.from(groups.values())
+    .sort((a, b) => {
+      if (a.isAlbum !== b.isAlbum) return a.isAlbum ? -1 : 1;
+      if (a.isNoisy !== b.isNoisy) return a.isNoisy ? 1 : -1;
+      return b.have - a.have;
+    })
     .slice(0, limit)
     .map(({ r }) => ({
       discogsId: r.id,
@@ -410,7 +426,7 @@ app.get('/api/search-release', requireAuth, async (req, res) => {
   if (!DISCOGS_KEY || !DISCOGS_SECRET) return res.status(500).json({ error: 'Search not configured' });
   try {
     // Fetch a larger raw pool than we'll show, since most of it collapses into duplicates
-    const url = `https://api.discogs.com/database/search?q=${encodeURIComponent(q)}&type=release&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}&per_page=50`;
+    const url = `https://api.discogs.com/database/search?q=${encodeURIComponent(q)}&type=release&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}&per_page=100`;
     const data = await discogsPublicGet(url);
     const results = dedupeReleaseResults(data.results || [], 15);
     res.json({ results });
