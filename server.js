@@ -26,7 +26,11 @@ const tokenStore = new Map();
 const pendingDiscogsLink = new Map();
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  etag: false,
+  lastModified: false,
+  setHeaders: (res) => res.setHeader('Cache-Control', 'no-store'),
+}));
 
 initSchema().catch(e => console.error('Schema init failed:', e.message || e, e.stack || ''));
 
