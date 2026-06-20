@@ -985,7 +985,8 @@ async function openDetail(idx) {
         </div>
       </div>
       
-      <a href="https://www.discogs.com/release/${currentRecord.id}" target="_blank" style="display:block;text-align:center;font-size:12px;color:var(--subtext);text-decoration:none;padding:16px 12px;">View on Discogs &#8599;</a>
+      <a href="https://www.discogs.com/release/${currentRecord.id}" target="_blank" style="display:block;text-align:center;font-size:12px;color:var(--subtext);text-decoration:none;padding:16px 12px 8px;">View on Discogs &#8599;</a>
+      ${currentRecord.manual_db_id ? `<button onclick="removeRecord()" style="display:block;width:100%;background:transparent;border:var(--border-w) solid var(--border);color:#c4524a;border-radius:var(--radius);padding:12px;margin-top:4px;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px;">Remove from collection</button>` : ''}
     </div>
   `;
   overlay.classList.add('open');
@@ -1177,6 +1178,23 @@ function renderDetailExtra(d) {
 
 function closeDetail() {
   document.getElementById('detail-overlay').classList.remove('open');
+}
+
+async function removeRecord() {
+  if (!currentRecord || !currentRecord.manual_db_id) return;
+  const title = currentRecord.basic_information?.title || 'this record';
+  if (!confirm('Remove "' + title + '" from your collection? This can\'t be undone.')) return;
+  try {
+    await apiDelete('/api/records/' + currentRecord.manual_db_id);
+    closeDetail();
+    showLoading('Updating your collection...');
+    const data = await fetchCollection();
+    releases = data.releases || [];
+    filtered = [...releases];
+    renderApp();
+  } catch(e) {
+    alert('Could not remove that record. Please try again.');
+  }
 }
 
 
