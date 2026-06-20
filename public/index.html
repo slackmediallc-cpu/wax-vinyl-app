@@ -2273,7 +2273,14 @@ function renderSearchUI() {
     + '<button onclick="runRecordSearch()" style="background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);padding:0 18px;cursor:pointer;font-weight:600;">Go</button>'
     + '</div>'
     + '<div id="search-results"></div>';
-  document.getElementById('search-record-input').focus();
+  // The panel slides up over 0.35s (see .chat-panel.open transition). Focusing
+  // the input immediately, mid-transform, makes iOS Safari scroll to the
+  // input's pre-animation position and strand it off-screen. Wait for the
+  // slide-up to finish before focusing.
+  setTimeout(function() {
+    const inp = document.getElementById('search-record-input');
+    if (inp) inp.focus();
+  }, 400);
 }
 
 async function runRecordSearch() {
