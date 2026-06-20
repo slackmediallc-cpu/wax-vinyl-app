@@ -83,7 +83,7 @@
   }
   .record-card:active { transform: scale(0.97); }
   .record-card:hover { border-color: var(--accent); }
-  .record-art-wrap { position: relative; width: 100%; padding-top: 100%; background: var(--artbg); }
+  .record-art-wrap { position: relative; width: 100%; background: var(--artbg); overflow: hidden; }
   .record-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: var(--artbg); display: block; }
   .record-art-placeholder { position: absolute; inset: 0; width: 100%; height: 100%; background: var(--artbg); display: flex; align-items: center; justify-content: center; }
   .disc-icon { width: 52px; height: 52px; border-radius: 50%; background: var(--disc); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; }
@@ -874,6 +874,17 @@ function artImg(url, cls, placeholder) {
 const discPlaceholder = `<div class="disc-icon"><div class="disc-hole"></div></div>`;
 const discPlaceholderSm = `<div style="width:28px;height:28px;border-radius:50%;background:var(--disc);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;"><div style="width:5px;height:5px;border-radius:50%;background:var(--artbg);"></div></div>`;
 
+// Explicitly sets each grid art wrapper's height in pixels to match its width.
+// A pure-CSS percentage-padding square trick was unreliable once the grid grew
+// to ~260 items, so this measures and sets real heights instead. Reads are
+// batched before writes to avoid layout thrashing across hundreds of nodes.
+function sizeGridArt() {
+  const wraps = document.querySelectorAll('.record-art-wrap');
+  if (!wraps.length) return;
+  const widths = Array.prototype.map.call(wraps, function(w) { return w.offsetWidth; });
+  wraps.forEach(function(w, i) { w.style.height = widths[i] + 'px'; });
+}
+
 function renderCollection() {
   const con = document.getElementById('collection-container');
   if (!con) { console.warn('collection-container not found'); return; }
@@ -911,6 +922,7 @@ function renderCollection() {
         </div>
       </div>`;
     }).join('');
+    sizeGridArt();
   } else {
     con.innerHTML = list.map((r,i) => {
       const bi = r.basic_information;
