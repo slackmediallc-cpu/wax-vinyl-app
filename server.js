@@ -1,6 +1,7 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const crypto = require('crypto');
+const https = require('https');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -181,6 +182,38 @@ async function discogsGet(endpoint, accessToken, accessSecret) {
   return res.json();
 }
 
+// Resilient fetch for unauthenticated/public Discogs calls (e.g. database search).
+// node-fetch v2 has a known bug where gzipped chunked responses can trigger
+// "Premature close" errors. Using Node's native https module here sidesteps it entirely.
+function discogsPublicGet(url) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, {
+      headers: {
+        'User-Agent': 'WaxVinylApp/1.0',
+        'Accept': 'application/json',
+        'Accept-Encoding': 'identity', // avoid gzip stream-parsing edge cases
+      },
+      timeout: 10000,
+    }, (res) => {
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          return reject(new Error(`Discogs ${res.statusCode}: ${body.slice(0, 200)}`));
+        }
+        try {
+          resolve(JSON.parse(body));
+        } catch (e) {
+          reject(new Error('Could not parse Discogs response: ' + e.message));
+        }
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('Discogs request timed out')));
+    req.on('error', reject);
+  });
+}
+
 app.get('/auth/login', requireAuth, async (req, res) => {
   if (!DISCOGS_KEY || !DISCOGS_SECRET) return res.status(500).send('Missing API credentials');
   try {
@@ -337,8 +370,7 @@ app.get('/api/search-release', requireAuth, async (req, res) => {
   if (!DISCOGS_KEY || !DISCOGS_SECRET) return res.status(500).json({ error: 'Search not configured' });
   try {
     const url = `https://api.discogs.com/database/search?q=${encodeURIComponent(q)}&type=release&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}&per_page=20`;
-    const response = await fetch(url, { headers: { 'User-Agent': 'WaxVinylApp/1.0' } });
-    const data = await response.json();
+    const data = await discogsPublicGet(url);
     const results = (data.results || []).map(r => ({
       discogsId: r.id,
       title: r.title,
@@ -364,8 +396,7 @@ app.get('/api/barcode-lookup', requireAuth, async (req, res) => {
   if (!DISCOGS_KEY || !DISCOGS_SECRET) return res.status(500).json({ error: 'Search not configured' });
   try {
     const url = `https://api.discogs.com/database/search?barcode=${encodeURIComponent(barcode)}&type=release&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}&per_page=10`;
-    const response = await fetch(url, { headers: { 'User-Agent': 'WaxVinylApp/1.0' } });
-    const data = await response.json();
+    const data = await discogsPublicGet(url);
     const results = (data.results || []).map(r => ({
       discogsId: r.id,
       title: r.title,
