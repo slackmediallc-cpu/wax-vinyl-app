@@ -495,16 +495,53 @@
 
   <!-- Scrollable controls -->
   <div class="settings-body" id="settings-body">
+    <div style="padding:16px;border-bottom:var(--border-w) solid var(--border);">
+      <div class="settings-section-title" style="margin-bottom:12px;">Your account</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+        <div id="avatar-wrap" style="position:relative;cursor:pointer;" onclick="document.getElementById('avatar-file-input').click();">
+          <div id="avatar-display" style="width:52px;height:52px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid var(--border);"></div>
+          <div style="position:absolute;bottom:-2px;right:-2px;width:18px;height:18px;border-radius:50%;background:var(--card);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;">✏️</div>
+        </div>
+        <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" onchange="handleAvatarUpload(this)">
+        <div style="flex:1;min-width:0;">
+          <div id="settings-displayname" style="font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Loading...</div>
+          <div id="settings-email" style="font-size:12px;color:var(--subtext);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        </div>
+      </div>
+      <button onclick="logoutWax()" style="font-size:13px;padding:10px;background:transparent;border:var(--border-w) solid var(--border);color:var(--text);border-radius:var(--radius);width:100%;cursor:pointer;font-family:inherit;">Log out</button>
+    </div>
+
+    <div style="padding:16px;border-bottom:var(--border-w) solid var(--border);">
+      <div class="settings-section-title" style="margin-bottom:10px;">Discogs sync</div>
+      <div id="discogs-link-section"></div>
+    </div>
+
+    <div style="padding:16px;border-bottom:var(--border-w) solid var(--border);">
+      <div class="settings-section-title" style="margin-bottom:10px;">Your collection</div>
+      <p style="font-size:12px;color:var(--subtext);line-height:1.6;margin-bottom:10px;">Add records by searching or scanning a barcode — no Discogs account needed.</p>
+      <div style="display:flex;gap:8px;">
+        <button onclick="openAddRecord('search')" style="flex:1;font-size:13px;padding:10px;background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);cursor:pointer;font-family:inherit;font-weight:600;">🔍 Search</button>
+        <button onclick="openAddRecord('scan')" style="flex:1;font-size:13px;padding:10px;background:var(--card);border:var(--border-w) solid var(--border);color:var(--text);border-radius:var(--radius);cursor:pointer;font-family:inherit;font-weight:600;">📷 Scan Barcode</button>
+      </div>
+    </div>
+
     <div style="padding:16px;">
       <div class="settings-section-title" style="margin-bottom:12px;">Choose a theme</div>
       <div id="preset-list" style="display:flex;flex-direction:column;gap:10px;"></div>
     </div>
-    <div style="padding:16px;border-top:var(--border-w) solid var(--border);margin-top:8px;">
-      <div class="settings-section-title" style="margin-bottom:10px;">Discogs account</div>
-      <p style="font-size:12px;color:var(--subtext);line-height:1.6;margin-bottom:10px;">Signed in as <strong style="color:var(--text);" id="settings-username">your account</strong>.</p>
-      <button onclick="reconnect()" style="font-size:13px;padding:10px;background:transparent;border:var(--border-w) solid var(--border);color:var(--text);border-radius:var(--radius);width:100%;cursor:pointer;font-family:inherit;">Switch Discogs account</button>
-    </div>
   </div>
+</div>
+
+<!-- Add Record Panel (search / scan) -->
+<div class="chat-panel" id="add-record-panel">
+  <div class="chat-record-header" style="cursor:default;">
+    <div class="chat-record-info">
+      <div class="chat-record-title">Add a record</div>
+      <div class="chat-record-sub" id="add-record-mode-label">Search</div>
+    </div>
+    <button class="chat-close-btn" onclick="closeAddRecord()">&#8595;</button>
+  </div>
+  <div id="add-record-body" style="flex:1;overflow-y:auto;padding:16px 20px 40px;"></div>
 </div>
 
 <!-- Lyrics Panel -->
@@ -561,6 +598,7 @@ const PRESETS = [
 
 
 let USERNAME = '';
+let CURRENT_USER = null;
 let releases = [];
 let filtered = [];
 let viewMode = 'grid';
@@ -638,20 +676,51 @@ function buildMiniCard(p) {
     + '</div></div>';
 }
 
-function getSK() { return localStorage.getItem('wax_sk') || ''; }
+function getToken() { return localStorage.getItem('wax_token') || ''; }
+function setToken(t) { localStorage.setItem('wax_token', t); }
+function clearToken() { localStorage.removeItem('wax_token'); }
 
 async function apiGet(endpoint) {
-  const sk = getSK();
-  const sep = endpoint.includes('?') ? '&' : '?';
-  const res = await fetch(endpoint + (sk ? sep + 'sk=' + sk : ''));
+  const token = getToken();
+  const res = await fetch(endpoint, {
+    headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+  });
   if (res.status === 401) throw new Error('not_authenticated');
-  if (res.status === 403) throw new Error('403');
+  if (res.status === 403) {
+    const data = await res.json().catch(() => ({}));
+    const err = new Error('403');
+    err.data = data;
+    throw err;
+  }
   if (!res.ok) throw new Error('API error ' + res.status);
   return res.json();
 }
 
-async function checkAuthStatus() {
-  return apiGet('/auth/status');
+async function apiPost(endpoint, body) {
+  const token = getToken();
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'Authorization': 'Bearer ' + token } : {}),
+    body: JSON.stringify(body || {})
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error || 'Request failed');
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
+async function apiDelete(endpoint) {
+  const token = getToken();
+  const res = await fetch(endpoint, {
+    method: 'DELETE',
+    headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
 }
 
 async function fetchCollection() {
@@ -1886,11 +1955,8 @@ async function fetchLyrics(trackIdx) {
       + '<p style="font-size:13px;color:var(--subtext);">Trying Genius...</p>'
       + '</div>';
     try {
-      const sk = getSK();
-      const gRes = await fetch('/api/lyrics?sk=' + sk
-        + '&artist=' + encodeURIComponent(cleanArtist)
+      const gData = await apiGet('/api/lyrics?artist=' + encodeURIComponent(cleanArtist)
         + '&song=' + encodeURIComponent(cleanSong));
-      const gData = await gRes.json();
       if (gData.lyrics) {
         showLyricsText(gData.title || song, gData.artist || artist, gData.lyrics);
       } else {
@@ -2063,19 +2129,13 @@ async function sendMessage(text, hidden) {
 
   try {
     const bi = chatRecord.basic_information;
-    const sk = getSK();
-    const res = await fetch('/api/chat?sk=' + sk, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 400,
-        system: buildSystemPrompt(bi),
-        messages: chatHistory,
-      }),
+    const data = await apiPost('/api/chat', {
+      model: 'claude-sonnet-4-6',
+      max_tokens: 400,
+      system: buildSystemPrompt(bi),
+      messages: chatHistory,
     });
 
-    const data = await res.json();
     hideTyping();
 
     if (data.content?.[0]?.text) {
@@ -2100,22 +2160,298 @@ function openSettings() {
   document.getElementById('settings-panel').classList.add('open');
   document.getElementById('settings-body').scrollTop = 0;
   buildPresetList();
-  const unEl = document.getElementById('settings-username');
-  if (unEl && USERNAME) unEl.textContent = USERNAME;
+  renderAccountSection();
+}
+
+function renderAccountSection() {
+  if (!CURRENT_USER) return;
+  const nameEl = document.getElementById('settings-displayname');
+  const emailEl = document.getElementById('settings-email');
+  if (nameEl) nameEl.textContent = CURRENT_USER.displayName || CURRENT_USER.email;
+  if (emailEl) emailEl.textContent = CURRENT_USER.email;
+
+  const avatarDisplay = document.getElementById('avatar-display');
+  if (avatarDisplay) {
+    if (CURRENT_USER.avatarUrl) {
+      avatarDisplay.innerHTML = '<img src="' + CURRENT_USER.avatarUrl + '" style="width:100%;height:100%;object-fit:cover;">';
+    } else {
+      const initial = (CURRENT_USER.displayName || CURRENT_USER.email || '?').charAt(0).toUpperCase();
+      avatarDisplay.innerHTML = '<span style="font-size:20px;font-weight:700;color:var(--accent-text);">' + initial + '</span>';
+    }
+  }
+
+  const discogsSection = document.getElementById('discogs-link-section');
+  if (discogsSection) {
+    if (CURRENT_USER.discogsLinked) {
+      discogsSection.innerHTML = '<p style="font-size:12px;color:var(--subtext);line-height:1.6;margin-bottom:10px;">Linked to Discogs as <strong style="color:var(--text);">' + escHtml(CURRENT_USER.discogsUsername || '') + '</strong>. Your collection syncs automatically each time you open Wax.</p>'
+        + '<button onclick="unlinkDiscogs()" style="font-size:13px;padding:10px;background:transparent;border:var(--border-w) solid var(--border);color:var(--text);border-radius:var(--radius);width:100%;cursor:pointer;font-family:inherit;">Unlink Discogs</button>';
+    } else {
+      discogsSection.innerHTML = '<p style="font-size:12px;color:var(--subtext);line-height:1.6;margin-bottom:10px;">Link your Discogs account to automatically sync your existing collection. Not required — you can also just search and add records below.</p>'
+        + '<button onclick="startDiscogsLink()" style="font-size:13px;padding:10px;background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);width:100%;cursor:pointer;font-family:inherit;font-weight:600;">Connect Discogs</button>';
+    }
+  }
+}
+
+async function handleAvatarUpload(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    alert('Please choose an image under 2MB.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    const dataUrl = e.target.result;
+    try {
+      await apiPost('/api/auth/avatar', { avatarUrl: dataUrl });
+      CURRENT_USER.avatarUrl = dataUrl;
+      renderAccountSection();
+    } catch(err) {
+      alert('Could not save profile picture. Please try again.');
+    }
+  };
+  reader.readAsDataURL(file);
 }
 
 function closeSettings() {
   document.getElementById('settings-panel').classList.remove('open');
 }
 
+function logoutWax() {
+  if (confirm('Log out of Wax?')) {
+    clearToken();
+    window.location.href = '/';
+  }
+}
+
 function reconnect() {
-  if (confirm('This will log you out and reconnect your Discogs account. Continue?')) {
-    const sk = localStorage.getItem('wax_sk') || '';
-    localStorage.removeItem('wax_sk');
-    localStorage.removeItem('wax_user');
-    fetch('/auth/logout?sk=' + sk).then(() => {
-      window.location.href = '/auth/login';
+  logoutWax();
+}
+
+// Kept as the "sign in with a different account" fallback on the private-collection screen
+// ── ADD RECORD (search / scan) ──
+let addRecordMode = 'search';
+let scanStream = null;
+let scanActive = false;
+
+function openAddRecord(mode) {
+  addRecordMode = mode || 'search';
+  document.getElementById('add-record-mode-label').textContent = addRecordMode === 'search' ? 'Search' : 'Scan Barcode';
+  document.getElementById('add-record-panel').classList.add('open');
+  if (addRecordMode === 'search') {
+    renderSearchUI();
+  } else {
+    renderScanUI();
+  }
+}
+
+function closeAddRecord() {
+  document.getElementById('add-record-panel').classList.remove('open');
+  stopBarcodeScan();
+}
+
+function renderSearchUI() {
+  const body = document.getElementById('add-record-body');
+  body.innerHTML = '<div style="display:flex;gap:8px;margin-bottom:16px;">'
+    + '<input id="search-record-input" type="text" placeholder="Album or artist name..." style="flex:1;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;" onkeydown="if(event.key===\'Enter\')runRecordSearch();">'
+    + '<button onclick="runRecordSearch()" style="background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);padding:0 18px;cursor:pointer;font-weight:600;">Go</button>'
+    + '</div>'
+    + '<div id="search-results"></div>';
+  document.getElementById('search-record-input').focus();
+}
+
+async function runRecordSearch() {
+  const q = document.getElementById('search-record-input').value.trim();
+  if (!q) return;
+  const results = document.getElementById('search-results');
+  results.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;padding:40px 0;gap:12px;">'
+    + '<div style="width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;"></div>'
+    + '<p style="font-size:13px;color:var(--subtext);">Searching...</p></div>';
+  try {
+    const data = await apiGet('/api/search-release?q=' + encodeURIComponent(q));
+    renderSearchResults(data.results || []);
+  } catch(e) {
+    results.innerHTML = '<p style="text-align:center;color:var(--subtext);font-size:13px;padding:40px 0;">Search failed. Try again.</p>';
+  }
+}
+
+function renderSearchResults(items) {
+  const results = document.getElementById('search-results');
+  if (items.length === 0) {
+    results.innerHTML = '<p style="text-align:center;color:var(--subtext);font-size:13px;padding:40px 0;">No results found. Try a different search.</p>';
+    return;
+  }
+  results.innerHTML = items.map(function(item, i) {
+    const img = item.coverImage || item.thumb || '';
+    return '<div onclick="confirmAddRecord(' + i + ')" style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:var(--border-w) solid var(--border);cursor:pointer;">'
+      + (img ? '<img src="' + img + '" style="width:48px;height:48px;border-radius:6px;object-fit:cover;flex-shrink:0;background:var(--artbg);">' : '<div style="width:48px;height:48px;border-radius:6px;background:var(--artbg);flex-shrink:0;"></div>')
+      + '<div style="flex:1;min-width:0;">'
+      + '<div style="font-size:14px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(item.title) + '</div>'
+      + '<div style="font-size:12px;color:var(--subtext);">' + escHtml([item.year, item.format].filter(Boolean).join(' · ')) + '</div>'
+      + '</div>'
+      + '<span style="font-size:20px;color:var(--accent);">+</span>'
+      + '</div>';
+  }).join('');
+  window._searchResultsCache = items;
+}
+
+async function confirmAddRecord(idx) {
+  const item = (window._searchResultsCache || [])[idx];
+  if (!item) return;
+  // Parse "Artist - Title" format that Discogs search typically returns
+  let artist = '', title = item.title;
+  const dashSplit = item.title.split(' - ');
+  if (dashSplit.length >= 2) {
+    artist = dashSplit[0].trim();
+    title = dashSplit.slice(1).join(' - ').trim();
+  }
+  try {
+    await apiPost('/api/records', {
+      discogsId: item.discogsId,
+      title: title,
+      artist: artist || 'Unknown Artist',
+      year: item.year,
+      genre: item.genre,
+      style: item.style,
+      format: item.format,
+      label: item.label,
+      coverImage: item.coverImage,
+      thumb: item.thumb,
     });
+    closeAddRecord();
+    showLoading('Adding to your collection...');
+    const data = await fetchCollection();
+    releases = data.releases || [];
+    filtered = [...releases];
+    renderApp();
+  } catch(e) {
+    if (e.message && e.message.includes('Already')) {
+      alert('That record is already in your collection.');
+    } else {
+      alert('Could not add that record. Please try again.');
+    }
+  }
+}
+
+function renderScanUI() {
+  const body = document.getElementById('add-record-body');
+  body.innerHTML = '<div style="text-align:center;">'
+    + '<div style="position:relative;width:100%;aspect-ratio:4/3;background:#000;border-radius:var(--radius);overflow:hidden;margin-bottom:16px;">'
+    + '<video id="scan-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>'
+    + '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">'
+    + '<div style="width:70%;height:35%;border:2px solid var(--accent);border-radius:8px;"></div>'
+    + '</div>'
+    + '</div>'
+    + '<p id="scan-status" style="font-size:13px;color:var(--subtext);margin-bottom:16px;">Point your camera at the barcode</p>'
+    + '<div id="scan-manual-fallback" style="display:none;">'
+    + '<p style="font-size:12px;color:var(--subtext);margin-bottom:8px;">Or type the barcode manually:</p>'
+    + '<div style="display:flex;gap:8px;">'
+    + '<input id="manual-barcode-input" type="text" inputmode="numeric" placeholder="UPC barcode number" style="flex:1;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;">'
+    + '<button onclick="lookupBarcode(document.getElementById(\'manual-barcode-input\').value)" style="background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);padding:0 18px;cursor:pointer;font-weight:600;">Go</button>'
+    + '</div>'
+    + '</div>'
+    + '<button onclick="document.getElementById(\'scan-manual-fallback\').style.display=\'block\';this.style.display=\'none\';" id="show-manual-btn" style="background:none;border:none;color:var(--subtext);font-size:12px;cursor:pointer;margin-top:8px;text-decoration:underline;">Enter barcode manually instead</button>'
+    + '<div id="scan-results"></div>'
+    + '</div>';
+  startBarcodeScan();
+}
+
+async function startBarcodeScan() {
+  const video = document.getElementById('scan-video');
+  const status = document.getElementById('scan-status');
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = scanStream;
+    scanActive = true;
+
+    if ('BarcodeDetector' in window) {
+      const detector = new BarcodeDetector({ formats: ['ean_13', 'upc_a', 'upc_e', 'ean_8'] });
+      scanLoop(video, detector, status);
+    } else {
+      status.textContent = 'Live scanning not supported on this browser — enter the barcode manually below.';
+      document.getElementById('scan-manual-fallback').style.display = 'block';
+      document.getElementById('show-manual-btn').style.display = 'none';
+    }
+  } catch(e) {
+    status.textContent = 'Camera access denied or unavailable — enter the barcode manually below.';
+    document.getElementById('scan-manual-fallback').style.display = 'block';
+    document.getElementById('show-manual-btn').style.display = 'none';
+  }
+}
+
+async function scanLoop(video, detector, status) {
+  if (!scanActive) return;
+  try {
+    const barcodes = await detector.detect(video);
+    if (barcodes.length > 0) {
+      scanActive = false;
+      status.textContent = 'Found it! Looking up...';
+      lookupBarcode(barcodes[0].rawValue);
+      return;
+    }
+  } catch(e) {}
+  if (scanActive) requestAnimationFrame(function() { scanLoop(video, detector, status); });
+}
+
+function stopBarcodeScan() {
+  scanActive = false;
+  if (scanStream) {
+    scanStream.getTracks().forEach(function(t) { t.stop(); });
+    scanStream = null;
+  }
+}
+
+async function lookupBarcode(code) {
+  code = (code || '').trim();
+  if (!code) return;
+  const resultsEl = document.getElementById('scan-results');
+  const statusEl = document.getElementById('scan-status');
+  if (statusEl) statusEl.textContent = 'Looking up barcode...';
+  if (resultsEl) resultsEl.innerHTML = '<div style="display:flex;justify-content:center;padding:20px 0;"><div style="width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;"></div></div>';
+  try {
+    const data = await apiGet('/api/barcode-lookup?code=' + encodeURIComponent(code));
+    const items = data.results || [];
+    if (items.length === 0) {
+      if (resultsEl) resultsEl.innerHTML = '<p style="text-align:center;color:var(--subtext);font-size:13px;padding:20px 0;">No match found for that barcode. Try the search tab instead.</p>';
+      return;
+    }
+    window._searchResultsCache = items;
+    if (resultsEl) {
+      resultsEl.innerHTML = '<p style="font-size:12px;color:var(--subtext);margin:16px 0 8px;">Found a match:</p>' + items.map(function(item, i) {
+        const img = item.coverImage || item.thumb || '';
+        return '<div onclick="confirmAddRecord(' + i + ')" style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:var(--border-w) solid var(--border);cursor:pointer;">'
+          + (img ? '<img src="' + img + '" style="width:48px;height:48px;border-radius:6px;object-fit:cover;flex-shrink:0;">' : '<div style="width:48px;height:48px;border-radius:6px;background:var(--artbg);flex-shrink:0;"></div>')
+          + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-size:14px;font-weight:500;color:var(--text);">' + escHtml(item.title) + '</div>'
+          + '<div style="font-size:12px;color:var(--subtext);">' + escHtml([item.year, item.format].filter(Boolean).join(' · ')) + '</div>'
+          + '</div><span style="font-size:20px;color:var(--accent);">+</span></div>';
+      }).join('');
+    }
+  } catch(e) {
+    if (resultsEl) resultsEl.innerHTML = '<p style="text-align:center;color:var(--subtext);font-size:13px;padding:20px 0;">Lookup failed. Try again.</p>';
+  }
+}
+
+
+
+async function startDiscogsLink() {
+  try {
+    const data = await apiGet('/auth/login');
+    if (data.redirectUrl) {
+      window.location.href = data.redirectUrl;
+    }
+  } catch(e) {
+    alert('Could not start Discogs connection. Please try again.');
+  }
+}
+
+async function unlinkDiscogs() {
+  if (!confirm('Unlink your Discogs account? Records synced from Discogs will no longer appear, but anything you added manually in Wax will stay.')) return;
+  try {
+    await apiPost('/api/auth/discogs/unlink');
+    window.location.reload();
+  } catch(e) {
+    alert('Could not unlink Discogs. Please try again.');
   }
 }
 
@@ -2147,19 +2483,66 @@ function showPrivateCollectionMessage(username) {
     + '</div>';
 }
 
+let authMode = 'login'; // 'login' or 'signup'
+
 function showLogin(errorMsg) {
   document.getElementById('app-content').innerHTML = `
     <div class="setup-screen">
       <div class="setup-disc"><div class="disc-hole-lg"></div></div>
       <div class="setup-title">Welcome to Wax</div>
-      <div class="setup-sub">Connect your Discogs collection to get started. Sign in with your Discogs account — your collection loads automatically.</div>
-      ${errorMsg ? `<p style="font-size:12px;color:#e05050;background:rgba(224,80,80,0.1);border-radius:8px;padding:10px 14px;width:100%;text-align:center;">${errorMsg}</p>` : ''}
-      <button class="token-btn" onclick="window.location.href='/auth/login'">
-        Connect with Discogs
+      <div class="setup-sub" id="auth-sub">${authMode === 'login' ? 'Sign in to your Wax account.' : 'Create your Wax account to get started.'}</div>
+      ${errorMsg ? `<p id="auth-error" style="font-size:12px;color:#e05050;background:rgba(224,80,80,0.1);border-radius:8px;padding:10px 14px;width:100%;text-align:center;">${errorMsg}</p>` : '<p id="auth-error" style="display:none;"></p>'}
+      <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
+        ${authMode === 'signup' ? '<input id="auth-name" type="text" placeholder="Your name" style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:14px;font-size:14px;color:var(--text);font-family:inherit;">' : ''}
+        <input id="auth-email" type="email" placeholder="Email" style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:14px;font-size:14px;color:var(--text);font-family:inherit;">
+        <input id="auth-password" type="password" placeholder="Password" style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:14px;font-size:14px;color:var(--text);font-family:inherit;" onkeydown="if(event.key==='Enter')submitAuth();">
+      </div>
+      <button class="token-btn" id="auth-submit-btn" onclick="submitAuth()">
+        ${authMode === 'login' ? 'Log In' : 'Create Account'}
       </button>
-      <p style="font-size:11px; color:var(--subtext); line-height:1.6;">You'll be redirected to Discogs to authorize the app, then brought back automatically.</p>
+      <button onclick="toggleAuthMode()" style="background:none;border:none;color:var(--subtext);font-size:13px;cursor:pointer;padding:4px;font-family:inherit;">
+        ${authMode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
+      </button>
     </div>
   `;
+}
+
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  showLogin();
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
+async function submitAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const nameInput = document.getElementById('auth-name');
+  const displayName = nameInput ? nameInput.value.trim() : '';
+
+  if (!email || !password) {
+    showAuthError('Please fill in all fields.');
+    return;
+  }
+
+  const btn = document.getElementById('auth-submit-btn');
+  btn.disabled = true;
+  btn.textContent = authMode === 'login' ? 'Logging in...' : 'Creating account...';
+
+  try {
+    const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/signup';
+    const body = authMode === 'login' ? { email, password } : { email, password, displayName };
+    const data = await apiPost(endpoint, body);
+    setToken(data.token);
+    init();
+  } catch(e) {
+    showAuthError(e.message || 'Something went wrong. Please try again.');
+    btn.disabled = false;
+    btn.textContent = authMode === 'login' ? 'Log In' : 'Create Account';
+  }
 }
 
 function showLoading(msg) {
@@ -2173,43 +2556,34 @@ function showLoading(msg) {
 
 async function init() {
   const params = new URLSearchParams(window.location.search);
-  const authResult = params.get('auth');
+  const discogsLinked = params.get('discogs_linked');
   const authError = params.get('error');
-  const sk = params.get('sk');
   const user = params.get('user');
 
-  // Save session key from OAuth callback
-  if (sk) {
-    localStorage.setItem('wax_sk', sk);
-    if (user) localStorage.setItem('wax_user', decodeURIComponent(user));
-  }
-
-  // Clean URL
-  if (authResult || authError || sk) {
+  // Clean URL after Discogs link redirect
+  if (discogsLinked || authError) {
     window.history.replaceState({}, '', '/');
   }
 
-  if (authError) {
-    showLogin('Authorization failed. Please try again.');
+  const token = getToken();
+  if (!token) {
+    showLogin(authError ? 'Connection failed. Please try again.' : null);
     return;
   }
 
   showLoading('Loading Wax…');
   try {
-    const status = await checkAuthStatus();
-    if (!status.authenticated) {
-      localStorage.removeItem('wax_sk');
-      showLogin();
-      return;
-    }
-    USERNAME = status.username;
-    showLoading(`Loading your collection, ${USERNAME}…<br><span style="font-size:11px;opacity:0.6;">Fetching all your records from Discogs</span>`);
+    const me = await apiGet('/api/auth/me');
+    CURRENT_USER = me;
+    USERNAME = me.discogsUsername || me.displayName || me.email;
+
+    showLoading(`Loading your collection…<br><span style="font-size:11px;opacity:0.6;">${me.discogsLinked ? 'Syncing from Discogs and your library' : 'Loading your library'}</span>`);
     let data;
     try {
       data = await fetchCollection();
     } catch(e) {
       if (e.message === '403') {
-        showPrivateCollectionMessage(USERNAME);
+        showPrivateCollectionMessage(e.data && e.data.username || USERNAME);
         return;
       }
       throw e;
@@ -2220,7 +2594,7 @@ async function init() {
     renderApp();
   } catch(e) {
     if (e.message === 'not_authenticated') {
-      localStorage.removeItem('wax_sk');
+      clearToken();
       showLogin();
     } else {
       showLogin('Something went wrong. Please try again.');
@@ -2417,11 +2791,11 @@ function soundVibeReveal() {
 // Oracle voice
 async function speakOracle(text) {
   try {
-    const sk = getSK();
-    if (!sk) return;
-    const res = await fetch('/api/speak?sk=' + sk, {
+    const token = getToken();
+    if (!token) return;
+    const res = await fetch('/api/speak', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ text }),
     });
     if (!res.ok) {
