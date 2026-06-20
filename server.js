@@ -27,7 +27,7 @@ const pendingDiscogsLink = new Map();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-initSchema().catch(e => console.error('Schema init failed:', e.message));
+initSchema().catch(e => console.error('Schema init failed:', e.message || e, e.stack || ''));
 
 // ── Wax account auth (JWT-based) ──
 function signToken(userId) {
