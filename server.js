@@ -172,27 +172,19 @@ function buildAuthHeader(method, url, extraParams, tokenSecret) {
     `oauth_signature="${pct(signature)}"`].join(', ');
 }
 
-async function discogsGet(endpoint, accessToken, accessSecret) {
-  const url = `https://api.discogs.com${endpoint}`;
-  const header = buildAuthHeader('GET', url, { oauth_token: accessToken }, accessSecret);
-  const res = await fetch(url, {
-    headers: { 'Authorization': header, 'User-Agent': 'WaxVinylApp/1.0' }
-  });
-  if (!res.ok) throw new Error(`Discogs ${res.status}: ${await res.text()}`);
-  return res.json();
-}
-
-// Resilient fetch for unauthenticated/public Discogs calls (e.g. database search).
-// node-fetch v2 has a known bug where gzipped chunked responses can trigger
-// "Premature close" errors. Using Node's native https module here sidesteps it entirely.
-function discogsPublicGet(url) {
+// Low-level HTTPS GET returning parsed JSON. node-fetch v2 has a known bug
+// where gzipped chunked responses from Discogs can trigger "Premature close"
+// errors — Node's native https module sidesteps it entirely. Both the
+// authenticated (OAuth) and public/unauthenticated Discogs GET calls share
+// this helper so neither path can hit the bug.
+function httpsGetJson(url, extraHeaders) {
   return new Promise((resolve, reject) => {
     const req = https.get(url, {
-      headers: {
+      headers: Object.assign({
         'User-Agent': 'WaxVinylApp/1.0',
         'Accept': 'application/json',
         'Accept-Encoding': 'identity', // avoid gzip stream-parsing edge cases
-      },
+      }, extraHeaders || {}),
       timeout: 10000,
     }, (res) => {
       let body = '';
@@ -212,6 +204,16 @@ function discogsPublicGet(url) {
     req.on('timeout', () => req.destroy(new Error('Discogs request timed out')));
     req.on('error', reject);
   });
+}
+
+async function discogsGet(endpoint, accessToken, accessSecret) {
+  const url = `https://api.discogs.com${endpoint}`;
+  const header = buildAuthHeader('GET', url, { oauth_token: accessToken }, accessSecret);
+  return httpsGetJson(url, { 'Authorization': header });
+}
+
+function discogsPublicGet(url) {
+  return httpsGetJson(url);
 }
 
 app.get('/auth/login', requireAuth, async (req, res) => {
@@ -290,7 +292,7 @@ app.get('/api/release/:id', requireAuth, async (req, res) => {
     const user = result.rows[0];
     const data = user && user.discogs_access_token
       ? await discogsGet(`/releases/${req.params.id}`, user.discogs_access_token, user.discogs_access_secret)
-      : await fetch(`https://api.discogs.com/releases/${req.params.id}`, { headers: { 'User-Agent': 'WaxVinylApp/1.0' } }).then(r => r.json());
+      : await httpsGetJson(`https://api.discogs.com/releases/${req.params.id}`);
     res.json(data);
   } catch(e) { res.status(500).json({ error: 'Failed to fetch release' }); }
 });
