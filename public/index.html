@@ -876,6 +876,22 @@ function renderCollection() {
   if (!con) { console.warn('collection-container not found'); return; }
   console.log('renderCollection: found container, releases:', releases.length, 'filtered:', filtered.length);
   const list = filtered.length || searchQuery || currentFilter !== 'all' ? filtered : releases;
+
+  if (list.length === 0 && releases.length === 0 && !searchQuery && currentFilter === 'all') {
+    const discogsLinked = CURRENT_USER && CURRENT_USER.discogsLinked;
+    con.innerHTML = `<div class="empty-state" style="grid-column:1/-1;max-width:340px;margin:0 auto;">
+      <div class="empty-icon">&#127911;</div>
+      <div class="empty-title">Your collection is empty</div>
+      <div class="empty-sub" style="margin-bottom:20px;">Add your first record to get started.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;width:100%;">
+        <button onclick="openAddRecord('search')" style="background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);padding:14px;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px;">🔍 Search for a record</button>
+        <button onclick="openAddRecord('scan')" style="background:var(--card);border:var(--border-w) solid var(--border);color:var(--text);border-radius:var(--radius);padding:14px;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px;">📷 Scan a barcode</button>
+        ${!discogsLinked ? `<button onclick="startDiscogsLink()" style="background:transparent;border:var(--border-w) solid var(--border);color:var(--text);border-radius:var(--radius);padding:14px;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px;">Connect Discogs to sync your collection</button>` : ''}
+      </div>
+    </div>`;
+    return;
+  }
+
   if (list.length === 0) {
     con.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">&#127902;</div><div class="empty-title">No records found</div><div class="empty-sub">Try a different search or filter.</div></div>`;
     return;
@@ -2503,8 +2519,53 @@ function showLogin(errorMsg) {
       <button onclick="toggleAuthMode()" style="background:none;border:none;color:var(--subtext);font-size:13px;cursor:pointer;padding:4px;font-family:inherit;">
         ${authMode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
       </button>
+      ${authMode === 'login' ? '<button onclick="showResetPassword()" style="background:none;border:none;color:var(--subtext);font-size:12px;cursor:pointer;padding:4px;font-family:inherit;text-decoration:underline;">Forgot password?</button>' : ''}
     </div>
   `;
+}
+
+function showResetPassword(errorMsg) {
+  document.getElementById('app-content').innerHTML = `
+    <div class="setup-screen">
+      <div class="setup-disc"><div class="disc-hole-lg"></div></div>
+      <div class="setup-title">Reset Password</div>
+      <div class="setup-sub">Enter your email and a new password.</div>
+      ${errorMsg ? `<p id="reset-error" style="font-size:12px;color:#e05050;background:rgba(224,80,80,0.1);border-radius:8px;padding:10px 14px;width:100%;text-align:center;">${errorMsg}</p>` : '<p id="reset-error" style="display:none;"></p>'}
+      <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
+        <input id="reset-email" type="email" placeholder="Email" style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:14px;font-size:14px;color:var(--text);font-family:inherit;">
+        <input id="reset-password" type="password" placeholder="New password" style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:14px;font-size:14px;color:var(--text);font-family:inherit;" onkeydown="if(event.key==='Enter')submitPasswordReset();">
+      </div>
+      <button class="token-btn" id="reset-submit-btn" onclick="submitPasswordReset()">
+        Reset Password
+      </button>
+      <button onclick="authMode='login';showLogin();" style="background:none;border:none;color:var(--subtext);font-size:13px;cursor:pointer;padding:4px;font-family:inherit;">Back to log in</button>
+    </div>
+  `;
+}
+
+async function submitPasswordReset() {
+  const email = document.getElementById('reset-email').value.trim();
+  const newPassword = document.getElementById('reset-password').value;
+  if (!email || !newPassword) {
+    const el = document.getElementById('reset-error');
+    el.textContent = 'Please fill in both fields.';
+    el.style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('reset-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Resetting...';
+  try {
+    const data = await apiPost('/api/auth/reset-password', { email, newPassword });
+    setToken(data.token);
+    init();
+  } catch(e) {
+    const el = document.getElementById('reset-error');
+    el.textContent = e.message || 'Could not reset password.';
+    el.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Reset Password';
+  }
 }
 
 function toggleAuthMode() {
