@@ -223,9 +223,9 @@
   .tab-item span { font-size: 9px; color: var(--subtext); transition: color 0.15s; }
   .tab-item.active span { color: var(--accent); }
 
-  /* Random picker button (floating) */
+  /* Random picker button (floating) — sits above the tab bar on mobile */
   .fab {
-    position: fixed; bottom: 88px; right: calc(50% - 215px + 16px);
+    position: fixed; bottom: 100px; right: calc(50% - 215px + 16px);
     width: 52px; height: 52px; border-radius: 50%;
     background: var(--accent); border: none; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
@@ -539,6 +539,8 @@
 
     /* FAB position */
     .fab { right: 24px; bottom: 24px; }
+    /* Tab bar hidden on desktop — nav lives in the sidebar */
+    #tab-bar { display: none !important; }
 
     /* Chat and lyrics panels */
     .chat-panel { max-width: 680px; margin-left: -340px; left: 50%; }
