@@ -2245,8 +2245,11 @@ function renderAccountSection() {
   const discogsSection = document.getElementById('discogs-link-section');
   if (discogsSection) {
     if (CURRENT_USER.discogsLinked) {
-      discogsSection.innerHTML = '<p style="font-size:12px;color:var(--subtext);line-height:1.6;margin-bottom:10px;">Linked to Discogs as <strong style="color:var(--text);">' + escHtml(CURRENT_USER.discogsUsername || '') + '</strong>. Your collection syncs automatically each time you open Wax.</p>'
-        + '<button onclick="unlinkDiscogs()" style="font-size:13px;padding:10px;background:transparent;border:var(--border-w) solid var(--border);color:var(--text);border-radius:var(--radius);width:100%;cursor:pointer;font-family:inherit;">Unlink Discogs</button>';
+      discogsSection.innerHTML = '<p style="font-size:12px;color:var(--subtext);line-height:1.6;margin-bottom:10px;">Linked to Discogs as <strong style="color:var(--text);">' + escHtml(CURRENT_USER.discogsUsername || '') + '</strong>. Added records to Discogs recently? Tap Sync to pull them in.</p>'
+        + '<div style="display:flex;gap:8px;">'
+        + '<button onclick="syncDiscogs()" id="sync-now-btn" style="flex:1;font-size:13px;padding:10px;background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);cursor:pointer;font-family:inherit;font-weight:600;">⟳ Sync Now</button>'
+        + '<button onclick="unlinkDiscogs()" style="flex:1;font-size:13px;padding:10px;background:transparent;border:var(--border-w) solid var(--border);color:var(--text);border-radius:var(--radius);cursor:pointer;font-family:inherit;">Unlink</button>'
+        + '</div>';
     } else {
       discogsSection.innerHTML = '<p style="font-size:12px;color:var(--subtext);line-height:1.6;margin-bottom:10px;">Link your Discogs account to automatically sync your existing collection. Not required — you can also just search and add records below.</p>'
         + '<button onclick="startDiscogsLink()" style="font-size:13px;padding:10px;background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);width:100%;cursor:pointer;font-family:inherit;font-weight:600;">Connect Discogs</button>';
@@ -2441,11 +2444,13 @@ async function confirmAddRecord(idx) {
     fetchCollection().then(function(data) {
       releases = data.releases || [];
       filtered = [...releases];
-      // Just re-render the nav count, not the whole app, so the panel stays open
+      // Update all nav/stat counters without closing the panel or re-rendering the whole app
       const countEls = document.querySelectorAll('.nav-sub');
       countEls.forEach(function(el) { el.textContent = releases.length + ' records'; });
       const statNums = document.querySelectorAll('.stat-num');
       if (statNums[0]) statNums[0].textContent = releases.length;
+      if (statNums[1]) statNums[1].textContent = new Set(releases.map(function(r) { return r.basic_information.artists[0]?.name; })).size;
+      if (statNums[2]) statNums[2].textContent = new Set(releases.map(function(r) { return r.basic_information.genres?.[0]; }).filter(Boolean)).size;
     });
   } catch(e) {
     // Restore the row on failure
@@ -2466,6 +2471,23 @@ async function startDiscogsLink() {
     }
   } catch(e) {
     alert('Could not start Discogs connection. Please try again.');
+  }
+}
+
+async function syncDiscogs() {
+  const btn = document.getElementById('sync-now-btn');
+  if (btn) { btn.textContent = '⟳ Syncing...'; btn.disabled = true; }
+  try {
+    const data = await apiPost('/api/sync-discogs', {});
+    // Reload the collection from the freshly-synced DB
+    const colData = await fetchCollection();
+    releases = colData.releases || [];
+    filtered = [...releases];
+    renderApp();
+    if (btn) { btn.textContent = '✓ Synced ' + (data.synced || '') + ' records'; btn.disabled = false; }
+  } catch(e) {
+    if (btn) { btn.textContent = '⟳ Sync Now'; btn.disabled = false; }
+    alert('Sync failed. Please try again.');
   }
 }
 
