@@ -647,7 +647,7 @@
       <div class="settings-section-title" style="margin-bottom:12px;">Choose a theme</div>
       <div id="preset-list" style="display:flex;flex-direction:column;gap:10px;"></div>
     </div>
-    <div style="text-align:center;font-size:9px;color:var(--subtext);padding:4px 0 18px;opacity:0.6;">build: phase-a-5</div>
+    <div style="text-align:center;font-size:9px;color:var(--subtext);padding:4px 0 18px;opacity:0.6;">build: phase-a-6</div>
   </div>
 </div>
 
@@ -2811,7 +2811,7 @@ async function init() {
     applyTheme(currentTheme);
     // Show tab bar now that user is logged in
     const tb = document.getElementById('tab-bar');
-    if (tb) tb.style.display = 'flex';
+    if (tb) tb.style.display = 'grid';
     checkPendingBadge();
     renderApp();
   } catch(e) {
