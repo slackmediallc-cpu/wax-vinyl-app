@@ -243,6 +243,66 @@ app.get('/auth/login', requireAuth, async (req, res) => {
   }
 });
 
+// ── Sync Discogs collection into the local DB ──────────────────────────────
+// Fetches all pages of the user's Discogs collection and upserts each record
+// into the records table (source='discogs'). Any records the user has since
+// removed from Discogs get deleted from the local DB so the two stay in sync.
+// Storing Discogs records locally means:
+//   • The collection endpoint no longer blocks on a live Discogs API call
+//   • Admin record counts are accurate (everything is in one table)
+//   • A "Sync now" button works without a full OAuth re-dance
+async function syncDiscogsCollection(userId, username, accessToken, accessSecret) {
+  let page = 1, allReleases = [];
+  while (true) {
+    const data = await discogsGet(
+      `/users/${username}/collection/folders/0/releases?per_page=100&page=${page}&sort=artist&sort_order=asc`,
+      accessToken, accessSecret
+    );
+    allReleases = allReleases.concat(data.releases || []);
+    if (page >= (data.pagination?.pages || 1)) break;
+    page++;
+  }
+
+  // Upsert — update metadata if the record is already stored (e.g. re-sync)
+  for (const r of allReleases) {
+    const bi = r.basic_information;
+    await pool.query(
+      `INSERT INTO records
+         (user_id, source, discogs_release_id, title, artist, year, genre, style, format, label, cover_image, thumb)
+       VALUES ($1, 'discogs', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       ON CONFLICT (user_id, discogs_release_id) DO UPDATE SET
+         source = 'discogs',
+         title = EXCLUDED.title, artist = EXCLUDED.artist, year = EXCLUDED.year,
+         genre = EXCLUDED.genre, style = EXCLUDED.style, format = EXCLUDED.format,
+         label = EXCLUDED.label, cover_image = EXCLUDED.cover_image, thumb = EXCLUDED.thumb`,
+      [
+        userId, String(r.id),
+        bi.title,
+        bi.artists?.[0]?.name || 'Unknown Artist',
+        bi.year || null,
+        bi.genres?.[0] || null,
+        bi.styles?.[0] || null,
+        bi.formats?.[0]?.name || null,
+        bi.labels?.[0]?.name || null,
+        bi.cover_image || null,
+        bi.thumb || null,
+      ]
+    );
+  }
+
+  // Remove any records that are no longer in the Discogs collection
+  if (allReleases.length > 0) {
+    const ids = allReleases.map(r => String(r.id));
+    await pool.query(
+      `DELETE FROM records WHERE user_id = $1 AND source = 'discogs'
+       AND discogs_release_id != ALL($2::text[])`,
+      [userId, ids]
+    );
+  }
+
+  return allReleases.length;
+}
+
 app.get('/auth/callback', async (req, res) => {
   const { oauth_token, oauth_verifier } = req.query;
   try {
@@ -271,6 +331,15 @@ app.get('/auth/callback', async (req, res) => {
       [identity.username, accessToken, accessSecret, waxUserId]
     );
 
+    // Sync the full Discogs collection into local DB straight away so the
+    // user sees their records immediately after linking (no separate step).
+    try {
+      await syncDiscogsCollection(waxUserId, identity.username, accessToken, accessSecret);
+    } catch(e) {
+      console.error('Initial Discogs sync failed:', e.message);
+      // Don't block the redirect — user can Sync Now from Settings if needed
+    }
+
     res.redirect(`/?discogs_linked=success&user=${encodeURIComponent(identity.username)}`);
   } catch(e) {
     console.error('Callback error:', e.message);
@@ -284,6 +353,8 @@ app.post('/api/auth/discogs/unlink', requireAuth, async (req, res) => {
       'UPDATE users SET discogs_username = NULL, discogs_access_token = NULL, discogs_access_secret = NULL WHERE id = $1',
       [req.userId]
     );
+    // Remove synced Discogs records — manual records stay in the collection
+    await pool.query("DELETE FROM records WHERE user_id = $1 AND source = 'discogs'", [req.userId]);
     res.json({ ok: true });
   } catch(e) {
     res.status(500).json({ error: e.message });
@@ -301,79 +372,65 @@ app.get('/api/release/:id', requireAuth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: 'Failed to fetch release' }); }
 });
 
-// ── Unified collection: Discogs-synced + manually-added records, deduped ──
+// ── Sync Now endpoint — re-pulls Discogs collection into DB on demand ──────
+app.post('/api/sync-discogs', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT discogs_username, discogs_access_token, discogs_access_secret FROM users WHERE id = $1',
+      [req.userId]
+    );
+    const user = result.rows[0];
+    if (!user || !user.discogs_access_token) {
+      return res.status(400).json({ error: 'No Discogs account linked' });
+    }
+    const count = await syncDiscogsCollection(
+      req.userId, user.discogs_username, user.discogs_access_token, user.discogs_access_secret
+    );
+    res.json({ ok: true, synced: count });
+  } catch(e) {
+    console.error('Sync error:', e.message);
+    res.status(500).json({ error: 'Sync failed: ' + e.message });
+  }
+});
+
+// ── Unified collection — served from local DB (fast, no live Discogs call) ─
 app.get('/api/collection', requireAuth, async (req, res) => {
   try {
-    const userResult = await pool.query('SELECT discogs_username, discogs_access_token, discogs_access_secret FROM users WHERE id = $1', [req.userId]);
+    const userResult = await pool.query(
+      'SELECT discogs_username, discogs_access_token FROM users WHERE id = $1',
+      [req.userId]
+    );
     const user = userResult.rows[0];
 
-    let discogsReleases = [];
-    if (user && user.discogs_access_token) {
-      try {
-        let page = 1;
-        while (true) {
-          const data = await discogsGet(
-            `/users/${user.discogs_username}/collection/folders/0/releases?per_page=100&page=${page}&sort=artist&sort_order=asc`,
-            user.discogs_access_token, user.discogs_access_secret
-          );
-          discogsReleases = discogsReleases.concat(data.releases || []);
-          if (page >= (data.pagination?.pages || 1)) break;
-          page++;
-        }
-      } catch(e) {
-        if (e.message && e.message.includes('403')) {
-          return res.status(403).json({ error: 'private_collection', username: user.discogs_username });
-        }
-        console.error('Discogs sync error:', e.message);
-      }
-    }
-
-    const manualResult = await pool.query(
-      "SELECT * FROM records WHERE user_id = $1 AND source = 'manual' ORDER BY added_at DESC",
+    const recordsResult = await pool.query(
+      'SELECT * FROM records WHERE user_id = $1 ORDER BY artist ASC, title ASC',
       [req.userId]
     );
 
-    const discogsIds = new Set(discogsReleases.map(r => String(r.id)));
+    const releases = recordsResult.rows.map(r => ({
+      id: r.discogs_release_id || `manual-${r.id}`,
+      manual_db_id: r.source === 'manual' ? r.id : null,
+      basic_information: {
+        id: r.discogs_release_id || null,
+        title: r.title,
+        artists: [{ name: r.artist || 'Unknown Artist' }],
+        year: r.year,
+        genres:   r.genre  ? [r.genre]           : [],
+        styles:   r.style  ? [r.style]            : [],
+        formats:  r.format ? [{ name: r.format }] : [],
+        labels:   r.label  ? [{ name: r.label }]  : [],
+        cover_image: r.cover_image,
+        thumb:       r.thumb,
+      }
+    }));
 
-    const manualAsReleases = manualResult.rows
-      .filter(r => !r.discogs_release_id || !discogsIds.has(String(r.discogs_release_id)))
-      .map(r => ({
-        id: r.discogs_release_id || `manual-${r.id}`,
-        manual_db_id: r.id,
-        basic_information: {
-          id: r.discogs_release_id || null,
-          title: r.title,
-          artists: [{ name: r.artist }],
-          year: r.year,
-          genres: r.genre ? [r.genre] : [],
-          styles: r.style ? [r.style] : [],
-          formats: r.format ? [{ name: r.format }] : [],
-          labels: r.label ? [{ name: r.label }] : [],
-          cover_image: r.cover_image,
-          thumb: r.thumb,
-        }
-      }));
-
-    // Merge and sort the full collection alphabetically by artist name so
-    // manually-added records slot into the right position alongside Discogs
-    // ones instead of always appending at the bottom.
-    const all = [...discogsReleases, ...manualAsReleases].sort((a, b) => {
-      const artistA = (a.basic_information?.artists?.[0]?.name || '').replace(/^the /i, '').toLowerCase();
-      const artistB = (b.basic_information?.artists?.[0]?.name || '').replace(/^the /i, '').toLowerCase();
-      if (artistA < artistB) return -1;
-      if (artistA > artistB) return 1;
-      // Same artist — sort by title
-      const titleA = (a.basic_information?.title || '').toLowerCase();
-      const titleB = (b.basic_information?.title || '').toLowerCase();
-      return titleA < titleB ? -1 : titleA > titleB ? 1 : 0;
-    });
     res.json({
-      releases: all,
-      total: all.length,
-      username: user?.discogs_username || null,
+      releases,
+      total: releases.length,
+      username:      user?.discogs_username || null,
       discogsLinked: !!(user && user.discogs_access_token),
-      manualCount: manualAsReleases.length,
-      discogsCount: discogsReleases.length,
+      manualCount:   recordsResult.rows.filter(r => r.source === 'manual').length,
+      discogsCount:  recordsResult.rows.filter(r => r.source === 'discogs').length,
     });
   } catch(e) {
     console.error('Collection error:', e.message);
@@ -795,7 +852,9 @@ app.get('/admin/users', adminAuth, async (req, res) => {
     const result = await pool.query(`
       SELECT u.id, u.email, u.display_name, u.discogs_username,
              u.created_at,
-             COUNT(r.id) AS record_count
+             COUNT(r.id) AS record_count,
+             COUNT(r.id) FILTER (WHERE r.source = 'manual')  AS manual_count,
+             COUNT(r.id) FILTER (WHERE r.source = 'discogs') AS discogs_count
       FROM users u
       LEFT JOIN records r ON r.user_id = u.id
       GROUP BY u.id
@@ -806,11 +865,14 @@ app.get('/admin/users', adminAuth, async (req, res) => {
       const discogs = u.discogs_username
         ? `<span class="badge">Discogs: ${escAdmin(u.discogs_username)}</span>`
         : `<span class="badge grey">No Discogs</span>`;
+      const countDetail = u.discogs_username
+        ? `${u.record_count} <span style="color:#8a7a6a;font-size:11px">(${u.discogs_count} Discogs · ${u.manual_count} manual)</span>`
+        : `${u.record_count}`;
       return `<tr>
         <td><a href="/admin/users/${u.id}">${escAdmin(u.display_name || u.email)}</a>
             <br><span style="font-size:11px;color:#8a7a6a">${escAdmin(u.email)}</span></td>
         <td>${discogs}</td>
-        <td style="text-align:center"><strong>${u.record_count}</strong></td>
+        <td style="text-align:center"><strong>${countDetail}</strong></td>
         <td style="color:#8a7a6a">${joined}</td>
         <td><a href="/admin/users/${u.id}" style="font-size:12px">View →</a></td>
       </tr>`;
