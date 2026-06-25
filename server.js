@@ -467,16 +467,23 @@ const NOISY_FORMAT_TAGS = ['single', 'ep', 'compilation', 'soundtrack', 'mixtape
 function dedupeReleaseResults(raw, limit) {
   const groups = new Map();
   for (const r of raw) {
-    const key = r.master_id || r.id;
     const formats = (r.format || []).map(f => f.toLowerCase());
     const isVinyl = formats.some(f => f.includes('vinyl'));
     const isAlbum = formats.includes('album');
     const isNoisy = formats.some(f => NOISY_FORMAT_TAGS.includes(f));
     const have = (r.community && r.community.have) || 0;
+
+    // Group by normalised "artist — title" so every pressing/year of the same
+    // album collapses into one result. master_id is unreliable (missing on many
+    // releases), and users just want to find the album — not pick a pressing.
+    const artistPart = (r.title || '').split(' - ')[0].toLowerCase().trim();
+    const titlePart  = (r.title || '').split(' - ').slice(1).join(' - ').toLowerCase().trim() || artistPart;
+    const key = artistPart + '|||' + titlePart;
+
     const existing = groups.get(key);
-    // Keep the first result we see for a group, but swap in a Vinyl pressing
-    // as the representative if we land on a non-Vinyl one first.
-    if (!existing || (isVinyl && !existing.isVinyl)) {
+    // Keep the most-owned pressing as the representative so the cover art and
+    // metadata shown are from whichever version Discogs collectors know best.
+    if (!existing || have > existing.have) {
       groups.set(key, { r, isVinyl, isAlbum, isNoisy, have });
     }
   }
