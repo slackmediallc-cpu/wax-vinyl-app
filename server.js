@@ -354,7 +354,19 @@ app.get('/api/collection', requireAuth, async (req, res) => {
         }
       }));
 
-    const all = [...discogsReleases, ...manualAsReleases];
+    // Merge and sort the full collection alphabetically by artist name so
+    // manually-added records slot into the right position alongside Discogs
+    // ones instead of always appending at the bottom.
+    const all = [...discogsReleases, ...manualAsReleases].sort((a, b) => {
+      const artistA = (a.basic_information?.artists?.[0]?.name || '').replace(/^the /i, '').toLowerCase();
+      const artistB = (b.basic_information?.artists?.[0]?.name || '').replace(/^the /i, '').toLowerCase();
+      if (artistA < artistB) return -1;
+      if (artistA > artistB) return 1;
+      // Same artist — sort by title
+      const titleA = (a.basic_information?.title || '').toLowerCase();
+      const titleB = (b.basic_information?.title || '').toLowerCase();
+      return titleA < titleB ? -1 : titleA > titleB ? 1 : 0;
+    });
     res.json({
       releases: all,
       total: all.length,
