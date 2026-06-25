@@ -529,7 +529,7 @@
       <div class="settings-section-title" style="margin-bottom:12px;">Choose a theme</div>
       <div id="preset-list" style="display:flex;flex-direction:column;gap:10px;"></div>
     </div>
-    <div style="text-align:center;font-size:9px;color:var(--subtext);padding:4px 0 18px;opacity:0.6;">build: grid-fix-4</div>
+    <div style="text-align:center;font-size:9px;color:var(--subtext);padding:4px 0 18px;opacity:0.6;">build: search-ux-1</div>
   </div>
 </div>
 
@@ -739,6 +739,7 @@ function renderApp() {
             <div class="nav-sub">${releases.length} records</div>
           </div>
           <div style="display:flex;gap:8px;">
+            <button class="nav-btn" onclick="openAddRecord()" title="Add a record" style="font-size:18px;">+</button>
             <button class="nav-btn" onclick="openSettings()" title="Themes" style="font-size:18px;">🎨</button>
             <button class="nav-btn" onclick="openSettings()" aria-label="Settings">&#9881;</button>
           </div>
@@ -773,6 +774,7 @@ function renderApp() {
           <div class="nav-sub">${releases.length} records</div>
         </div>
         <div style="display:flex;gap:8px;">
+          <button class="nav-btn" onclick="openAddRecord()" title="Add a record" style="font-size:18px;">+</button>
           <button class="nav-btn" onclick="openSettings()" title="Themes" style="font-size:18px;">🎨</button>
           <button class="nav-btn" onclick="openSettings()" aria-label="Settings">&#9881;</button>
         </div>
@@ -2297,58 +2299,96 @@ function openAddRecord() {
 
 function closeAddRecord() {
   document.getElementById('add-record-panel').classList.remove('open');
+  // Re-render the collection with whatever was added while the panel was open
+  if (releases.length) {
+    filtered = [...releases];
+    renderCollection();
+  }
 }
 
 function renderSearchUI() {
   const body = document.getElementById('add-record-body');
-  body.innerHTML = '<div style="display:flex;gap:8px;margin-bottom:16px;">'
-    + '<input id="search-record-input" type="text" placeholder="Album or artist name..." style="flex:1;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;" onkeydown="if(event.key===\'Enter\')runRecordSearch();">'
-    + '<button onclick="runRecordSearch()" style="background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);padding:0 18px;cursor:pointer;font-weight:600;">Go</button>'
+  body.innerHTML = ''
+    + '<div style="position:relative;margin-bottom:8px;">'
+    +   '<input id="search-record-input" type="text" placeholder="Artist or album name..." autocomplete="off" '
+    +     'style="width:100%;box-sizing:border-box;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:12px 14px;font-size:15px;color:var(--text);font-family:inherit;" '
+    +     'oninput="handleSearchTypeahead(this.value)" onkeydown="if(event.key===\'Enter\')runRecordSearch();">'
     + '</div>'
     + '<div id="search-results"></div>';
-  // The panel slides up over 0.35s (see .chat-panel.open transition). Focusing
-  // the input immediately, mid-transform, makes iOS Safari scroll to the
-  // input's pre-animation position and strand it off-screen. Wait for the
-  // slide-up to finish before focusing.
   setTimeout(function() {
     const inp = document.getElementById('search-record-input');
     if (inp) inp.focus();
   }, 400);
 }
 
-async function runRecordSearch() {
-  const q = document.getElementById('search-record-input').value.trim();
-  if (!q) return;
-  const results = document.getElementById('search-results');
-  results.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;padding:40px 0;gap:12px;">'
-    + '<div style="width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;"></div>'
-    + '<p style="font-size:13px;color:var(--subtext);">Searching...</p></div>';
-  try {
-    const data = await apiGet('/api/search-release?q=' + encodeURIComponent(q));
-    renderSearchResults(data.results || []);
-  } catch(e) {
-    results.innerHTML = '<p style="text-align:center;color:var(--subtext);font-size:13px;padding:40px 0;">Search failed. Try again.</p>';
+let _searchDebounceTimer = null;
+function handleSearchTypeahead(val) {
+  clearTimeout(_searchDebounceTimer);
+  const trimmed = val.trim();
+  if (trimmed.length < 3) {
+    document.getElementById('search-results').innerHTML = '';
+    return;
   }
+  document.getElementById('search-results').innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;padding:20px 0 10px;color:var(--subtext);font-size:13px;">'
+    + '<div style="width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>'
+    + 'Searching...</div>';
+  _searchDebounceTimer = setTimeout(async function() {
+    try {
+      const data = await apiGet('/api/search-release?q=' + encodeURIComponent(trimmed));
+      renderSearchResults(data.results || []);
+    } catch(e) {
+      document.getElementById('search-results').innerHTML =
+        '<p style="text-align:center;color:var(--subtext);font-size:13px;padding:20px 0;">Search failed. Try again.</p>';
+    }
+  }, 450);
+}
+
+async function runRecordSearch() {
+  const val = (document.getElementById('search-record-input') || {}).value || '';
+  handleSearchTypeahead(val);
 }
 
 function renderSearchResults(items) {
   const results = document.getElementById('search-results');
+  if (!results) return;
   if (items.length === 0) {
     results.innerHTML = '<p style="text-align:center;color:var(--subtext);font-size:13px;padding:40px 0;">No results found. Try a different search.</p>';
     return;
   }
+  // Build a set of owned release IDs and normalised titles so we can badge results
+  // that are already in the collection — useful when browsing an artist's catalogue.
+  const ownedIds = new Set(releases.map(function(r) { return String(r.id); }));
+  const ownedTitles = new Set(releases.map(function(r) {
+    const bi = r.basic_information;
+    const artist = (bi.artists[0]?.name || '').replace(/\s*\(\d+\)$/, '').toLowerCase().trim();
+    return artist + '|' + bi.title.toLowerCase().trim();
+  }));
+
+  window._searchResultsCache = items;
   results.innerHTML = items.map(function(item, i) {
     const img = item.coverImage || item.thumb || '';
-    return '<div onclick="confirmAddRecord(' + i + ')" style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:var(--border-w) solid var(--border);cursor:pointer;">'
-      + (img ? '<img src="' + img + '" style="width:48px;height:48px;border-radius:6px;object-fit:cover;flex-shrink:0;background:var(--artbg);">' : '<div style="width:48px;height:48px;border-radius:6px;background:var(--artbg);flex-shrink:0;"></div>')
+    // Check by release ID first, then by normalised "artist|title" string
+    const dashSplit = item.title.split(' - ');
+    const searchArtist = (dashSplit.length >= 2 ? dashSplit[0] : '').toLowerCase().trim();
+    const searchTitle  = (dashSplit.length >= 2 ? dashSplit.slice(1).join(' - ') : item.title).toLowerCase().trim();
+    const owned = ownedIds.has(String(item.discogsId)) || ownedTitles.has(searchArtist + '|' + searchTitle);
+    const imgEl = img
+      ? '<img src="' + img + '" style="width:48px;height:48px;border-radius:6px;object-fit:cover;flex-shrink:0;background:var(--artbg);">'
+      : '<div style="width:48px;height:48px;border-radius:6px;background:var(--artbg);flex-shrink:0;"></div>';
+    const badge = owned
+      ? '<span style="font-size:10px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:2px 5px;white-space:nowrap;">OWNED</span>'
+      : '<span style="font-size:20px;color:var(--accent);">+</span>';
+    return '<div id="search-row-' + i + '" onclick="' + (owned ? '' : 'confirmAddRecord(' + i + ')') + '" '
+      + 'style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:var(--border-w) solid var(--border);cursor:' + (owned ? 'default' : 'pointer') + ';opacity:' + (owned ? '0.6' : '1') + ';">'
+      + imgEl
       + '<div style="flex:1;min-width:0;">'
-      + '<div style="font-size:14px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(item.title) + '</div>'
-      + '<div style="font-size:12px;color:var(--subtext);">' + escHtml([item.year, item.format].filter(Boolean).join(' · ')) + '</div>'
+      +   '<div style="font-size:14px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(item.title) + '</div>'
+      +   '<div style="font-size:12px;color:var(--subtext);">' + escHtml([item.year, item.format].filter(Boolean).join(' · ')) + '</div>'
       + '</div>'
-      + '<span style="font-size:20px;color:var(--accent);">+</span>'
+      + badge
       + '</div>';
   }).join('');
-  window._searchResultsCache = items;
 }
 
 async function confirmAddRecord(idx) {
@@ -2360,6 +2400,15 @@ async function confirmAddRecord(idx) {
   if (dashSplit.length >= 2) {
     artist = dashSplit[0].trim();
     title = dashSplit.slice(1).join(' - ').trim();
+  }
+  // Optimistically mark the row as added so the user gets instant feedback
+  // and can keep browsing without waiting for the network round-trip.
+  const row = document.getElementById('search-row-' + idx);
+  if (row) {
+    row.style.opacity = '0.5';
+    row.style.pointerEvents = 'none';
+    const badge = row.querySelector('span:last-child');
+    if (badge) { badge.textContent = '✓'; badge.style.fontSize = '18px'; }
   }
   try {
     await apiPost('/api/records', {
@@ -2374,13 +2423,33 @@ async function confirmAddRecord(idx) {
       coverImage: item.coverImage,
       thumb: item.thumb,
     });
-    closeAddRecord();
-    showLoading('Adding to your collection...');
-    const data = await fetchCollection();
-    releases = data.releases || [];
-    filtered = [...releases];
-    renderApp();
+    // Mark as owned in the cached results and update the badge to OWNED
+    if (row) {
+      const badge = row.querySelector('span:last-child');
+      if (badge) {
+        badge.textContent = 'OWNED';
+        badge.style.fontSize = '10px';
+        badge.style.fontWeight = '700';
+        badge.style.border = '1px solid var(--accent)';
+        badge.style.borderRadius = '4px';
+        badge.style.padding = '2px 5px';
+      }
+      row.style.cursor = 'default';
+      row.onclick = null;
+    }
+    // Refresh collection count in the background without closing the panel
+    fetchCollection().then(function(data) {
+      releases = data.releases || [];
+      filtered = [...releases];
+      // Just re-render the nav count, not the whole app, so the panel stays open
+      const countEls = document.querySelectorAll('.nav-sub');
+      countEls.forEach(function(el) { el.textContent = releases.length + ' records'; });
+      const statNums = document.querySelectorAll('.stat-num');
+      if (statNums[0]) statNums[0].textContent = releases.length;
+    });
   } catch(e) {
+    // Restore the row on failure
+    if (row) { row.style.opacity = '1'; row.style.pointerEvents = ''; }
     if (e.message && e.message.includes('Already')) {
       alert('That record is already in your collection.');
     } else {
