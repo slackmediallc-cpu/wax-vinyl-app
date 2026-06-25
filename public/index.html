@@ -562,6 +562,10 @@
       <div class="ti">💿</div>
       <span>Collection</span>
     </div>
+    <div class="tab-item" id="tab-shuffle" onclick="openRandom()">
+      <div class="ti">🔀</div>
+      <span>Shuffle</span>
+    </div>
     <div class="tab-item" id="tab-friends" onclick="switchTab('friends')">
       <div class="ti" style="position:relative;display:inline-block;">
         👥<span id="friends-badge" style="display:none;" class="tab-badge">0</span>
@@ -641,7 +645,7 @@
       <div class="settings-section-title" style="margin-bottom:12px;">Choose a theme</div>
       <div id="preset-list" style="display:flex;flex-direction:column;gap:10px;"></div>
     </div>
-    <div style="text-align:center;font-size:9px;color:var(--subtext);padding:4px 0 18px;opacity:0.6;">build: phase-a-1</div>
+    <div style="text-align:center;font-size:9px;color:var(--subtext);padding:4px 0 18px;opacity:0.6;">build: phase-a-2</div>
   </div>
 </div>
 
@@ -913,7 +917,6 @@ function renderApp() {
         <button class="view-btn ${viewMode==='list'?'active':''}" onclick="setView('list')">&#9776; List</button>
       </div>
       <div class="collection ${viewMode==='grid'?'grid-view':'list-view'}" id="collection-container"></div>
-      <button class="fab" onclick="openRandom()" aria-label="Pick random record" title="Pick a random record">&#127922;</button>
     `;
   }
   // Defer render to ensure DOM is painted after innerHTML update
