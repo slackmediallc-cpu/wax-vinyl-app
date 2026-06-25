@@ -70,8 +70,101 @@
   .view-btn { flex: 1; background: var(--card); border: var(--border-w) solid var(--border); border-radius: var(--radius); padding: 7px; font-size: 11px; color: var(--subtext); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.15s; }
   .view-btn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 
-  /* Collection grid */
-  .collection { flex: 1; overflow-y: auto; padding: 0 12px 100px; }
+  /* ── PHASE A: SOCIAL / FRIENDS ── */
+
+  /* Extra bottom padding so content clears the tab bar */
+  .collection { flex: 1; overflow-y: auto; padding: 0 12px 130px; }
+
+  /* Friends view container */
+  .friends-view { flex: 1; overflow-y: auto; padding-bottom: 130px; }
+
+  /* User row (following/followers/search results) */
+  .user-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-bottom: var(--border-w) solid var(--border);
+    cursor: pointer; transition: background 0.15s;
+  }
+  .user-row:hover { background: var(--card); }
+  .user-avatar-sm {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--accent); display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; overflow: hidden; font-size: 18px; font-weight: 700;
+    color: var(--accent-text);
+  }
+  .user-info { flex: 1; min-width: 0; }
+  .user-handle { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-sub { font-size: 11px; color: var(--subtext); margin-top: 2px; }
+
+  /* Follow button states */
+  .follow-btn {
+    font-size: 12px; font-weight: 600; padding: 7px 16px;
+    border-radius: 20px; cursor: pointer; border: none;
+    font-family: inherit; white-space: nowrap; flex-shrink: 0; transition: all 0.15s;
+  }
+  .follow-btn.none { background: var(--accent); color: var(--accent-text); }
+  .follow-btn.pending { background: transparent; border: var(--border-w) solid var(--border); color: var(--subtext); }
+  .follow-btn.accepted { background: transparent; border: var(--border-w) solid var(--border); color: var(--text); }
+
+  /* Pending request row (accept / decline) */
+  .req-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .req-accept { background: var(--accent); color: var(--accent-text); border: none; border-radius: 16px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .req-decline { background: transparent; border: var(--border-w) solid var(--border); color: var(--text); border-radius: 16px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
+
+  /* Friends tab badge */
+  .tab-badge {
+    position: absolute; top: -4px; right: -6px;
+    min-width: 14px; height: 14px; border-radius: 7px;
+    background: #e05050; font-size: 8px; color: #fff;
+    text-align: center; line-height: 14px; font-weight: 700;
+    padding: 0 3px; pointer-events: none;
+  }
+
+  /* Profile overlay (slides up like detail) */
+  .profile-overlay {
+    position: fixed; inset: 0; z-index: 520; background: var(--bg);
+    transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.32,0.72,0,1);
+    overflow-y: auto; max-width: 430px; left: 50%; margin-left: -215px;
+  }
+  .profile-overlay.open { transform: translateY(0); }
+
+  /* Profile header */
+  .profile-hero { padding: 52px 20px 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; background: var(--card); border-bottom: var(--border-w) solid var(--border); }
+  .profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 700; color: var(--accent-text); overflow: hidden; border: 3px solid var(--border); }
+  .profile-username { font-size: 20px; font-weight: 700; color: var(--text); }
+  .profile-displayname { font-size: 13px; color: var(--subtext); margin-top: -6px; }
+  .profile-stats { display: flex; gap: 24px; }
+  .profile-stat { text-align: center; }
+  .profile-stat-num { font-size: 18px; font-weight: 700; color: var(--accent); }
+  .profile-stat-lbl { font-size: 10px; color: var(--subtext); }
+
+  /* Locked collection overlay */
+  .locked-collection { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 24px; text-align: center; gap: 12px; }
+
+  /* Username gate modal */
+  .gate-overlay {
+    position: fixed; inset: 0; z-index: 600; background: rgba(0,0,0,0.7);
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .gate-sheet {
+    background: var(--bg); border-radius: 16px 16px 0 0;
+    padding: 24px 24px 48px; width: 100%; max-width: 430px;
+    border-top: var(--border-w) solid var(--border);
+  }
+
+  /* Section header inside friends/profile views */
+  .section-hdr {
+    font-size: 10px; font-weight: 600; color: var(--subtext);
+    text-transform: uppercase; letter-spacing: 0.07em;
+    padding: 14px 16px 8px; border-bottom: var(--border-w) solid var(--border);
+    background: var(--bg);
+  }
+
+  @media (min-width: 430px) {
+    .profile-overlay { max-width: 430px; margin-left: -215px; left: 50%; }
+  }
+  @media (min-width: 768px) {
+    .profile-overlay { max-width: 720px !important; margin-left: -360px !important; left: 50% !important; }
+  }
   .grid-view { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .list-view { display: flex; flex-direction: column; gap: 8px; }
 
@@ -513,6 +606,11 @@
     </div>
 
     <div style="padding:16px;border-bottom:var(--border-w) solid var(--border);">
+      <div class="settings-section-title" style="margin-bottom:10px;">Your profile</div>
+      <div id="profile-settings-section"><!-- rendered by renderProfileSettingsSection() --></div>
+    </div>
+
+    <div style="padding:16px;border-bottom:var(--border-w) solid var(--border);">
       <div class="settings-section-title" style="margin-bottom:10px;">Discogs sync</div>
       <div id="discogs-link-section"></div>
     </div>
@@ -529,7 +627,7 @@
       <div class="settings-section-title" style="margin-bottom:12px;">Choose a theme</div>
       <div id="preset-list" style="display:flex;flex-direction:column;gap:10px;"></div>
     </div>
-    <div style="text-align:center;font-size:9px;color:var(--subtext);padding:4px 0 18px;opacity:0.6;">build: search-ux-1</div>
+    <div style="text-align:center;font-size:9px;color:var(--subtext);padding:4px 0 18px;opacity:0.6;">build: phase-a-1</div>
   </div>
 </div>
 
@@ -576,6 +674,25 @@
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage();}"></textarea>
     <button class="chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()">&#10148;</button>
   </div>
+</div>
+
+<!-- Tab bar (shown after login) -->
+<div class="tab-bar" id="tab-bar" style="display:none;">
+  <div class="tab-item active" id="tab-collection" onclick="switchTab('collection')">
+    <div class="ti">💿</div>
+    <span>Collection</span>
+  </div>
+  <div class="tab-item" id="tab-friends" onclick="switchTab('friends')">
+    <div class="ti" style="position:relative;display:inline-block;">
+      👥<span id="friends-badge" style="display:none;" class="tab-badge">0</span>
+    </div>
+    <span>Friends</span>
+  </div>
+</div>
+
+<!-- Profile overlay (slides up, like detail view) -->
+<div class="profile-overlay" id="profile-overlay">
+  <div id="profile-content"></div>
 </div>
 
 <script>
@@ -1017,6 +1134,7 @@ async function openDetail(idx) {
       
       <a href="https://www.discogs.com/release/${currentRecord.id}" target="_blank" style="display:block;text-align:center;font-size:12px;color:var(--subtext);text-decoration:none;padding:16px 12px 8px;">View on Discogs &#8599;</a>
       ${currentRecord.manual_db_id ? `<button onclick="removeRecord()" style="display:block;width:100%;background:transparent;border:var(--border-w) solid var(--border);color:#c4524a;border-radius:var(--radius);padding:12px;margin-top:4px;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px;">Remove from collection</button>` : ''}
+      <div id="record-owners-section" style="margin-top:16px;"></div>
     </div>
   `;
   overlay.classList.add('open');
@@ -1028,6 +1146,11 @@ async function openDetail(idx) {
     renderDetailExtra(data);
   } catch(e) {
     document.getElementById('detail-extra').innerHTML = '';
+  }
+
+  // Load record owners (who else on Wax has this) — non-blocking
+  if (currentRecord.id && CURRENT_USER && CURRENT_USER.username) {
+    loadRecordOwners(currentRecord.id);
   }
 }
 
@@ -2223,6 +2346,7 @@ function openSettings() {
   document.getElementById('settings-body').scrollTop = 0;
   buildPresetList();
   renderAccountSection();
+  renderProfileSettingsSection();
 }
 
 function renderAccountSection() {
@@ -2682,6 +2806,10 @@ async function init() {
     releases = data.releases || [];
     filtered = [...releases];
     applyTheme(currentTheme);
+    // Show tab bar now that user is logged in
+    const tb = document.getElementById('tab-bar');
+    if (tb) tb.style.display = 'flex';
+    checkPendingBadge();
     renderApp();
   } catch(e) {
     if (e.message === 'not_authenticated') {
@@ -2924,6 +3052,466 @@ const ORACLE_SLOGANS = [
   "Your evening has been decided. The oracle has spoken.",
   "Some things are written in the stars. This is one of them.",
 ];
+
+// ═══════════════════════════════════════════════════════════
+// PHASE A — SOCIAL / FRIENDS FRONTEND
+// ═══════════════════════════════════════════════════════════
+
+let currentTab = 'collection';
+
+// ── Tab switching ────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-item').forEach(function(el) { el.classList.remove('active'); });
+  const tabEl = document.getElementById('tab-' + tab);
+  if (tabEl) tabEl.classList.add('active');
+  if (tab === 'collection') {
+    renderApp();
+  } else if (tab === 'friends') {
+    if (!CURRENT_USER || !CURRENT_USER.username) {
+      switchTab('collection'); // reset tab highlight
+      document.getElementById('tab-friends').classList.remove('active');
+      document.getElementById('tab-collection').classList.add('active');
+      showUsernameGate(function() { switchTab('friends'); });
+    } else {
+      renderFriendsApp();
+    }
+  }
+}
+
+// ── Username gate ────────────────────────────────────────────
+function showUsernameGate(onSuccess) {
+  const existing = document.getElementById('username-gate');
+  if (existing) existing.remove();
+  const gate = document.createElement('div');
+  gate.className = 'gate-overlay';
+  gate.id = 'username-gate';
+  gate.innerHTML = '<div class="gate-sheet">'
+    + '<div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:6px;">Choose a username</div>'
+    + '<div style="font-size:13px;color:var(--subtext);margin-bottom:20px;line-height:1.6;">Pick a handle so friends can find you on Wax. Letters, numbers, dots, hyphens, underscores — no spaces.</div>'
+    + '<input id="gate-username-input" type="text" placeholder="e.g. david.slack" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" maxlength="30" '
+    + 'style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:13px 14px;font-size:15px;color:var(--text);font-family:inherit;margin-bottom:6px;" '
+    + 'oninput="this.value=this.value.toLowerCase();" onkeydown="if(event.key===\'Enter\')submitUsernameGate();">'
+    + '<div id="gate-error" style="font-size:12px;color:#e05050;min-height:18px;margin-bottom:10px;"></div>'
+    + '<button id="gate-submit-btn" onclick="submitUsernameGate()" style="width:100%;background:var(--accent);border:none;border-radius:var(--btn-shape);padding:14px;font-size:14px;font-weight:600;color:var(--accent-text);cursor:pointer;font-family:inherit;margin-bottom:10px;">Set username</button>'
+    + '<button onclick="document.getElementById(\'username-gate\').remove();" style="width:100%;background:none;border:none;color:var(--subtext);font-size:13px;cursor:pointer;font-family:inherit;">Maybe later</button>'
+    + '</div>';
+  document.body.appendChild(gate);
+  window._gateOnSuccess = onSuccess;
+  setTimeout(function() { const inp = document.getElementById('gate-username-input'); if (inp) inp.focus(); }, 100);
+}
+
+async function submitUsernameGate() {
+  const input = document.getElementById('gate-username-input');
+  const errEl = document.getElementById('gate-error');
+  const btn = document.getElementById('gate-submit-btn');
+  const username = (input ? input.value : '').trim().toLowerCase();
+  if (!/^[a-z0-9._-]{2,30}$/.test(username)) {
+    if (errEl) errEl.textContent = 'Must be 2–30 chars: letters, numbers, dots, hyphens, underscores.';
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  try {
+    await apiPost('/api/auth/username', { username });
+    CURRENT_USER.username = username;
+    const gate = document.getElementById('username-gate');
+    if (gate) gate.remove();
+    if (window._gateOnSuccess) window._gateOnSuccess();
+  } catch(e) {
+    if (errEl) errEl.textContent = e.message || 'Could not save username. Try another.';
+    if (btn) { btn.disabled = false; btn.textContent = 'Set username'; }
+  }
+}
+
+// ── Friends main view ────────────────────────────────────────
+async function renderFriendsApp() {
+  document.getElementById('app-content').innerHTML = ''
+    + '<div class="nav"><div><div class="nav-title">Friends</div>'
+    + '<div class="nav-sub">@' + escHtml(CURRENT_USER.username || '') + '</div></div>'
+    + '<button class="nav-btn" onclick="openFriendsSearch()" title="Find friends" style="font-size:18px;">🔍</button></div>'
+    + '<div class="friends-view" id="friends-view-body">'
+    + '<div style="display:flex;align-items:center;gap:12px;padding:40px 20px;color:var(--subtext);font-size:13px;">'
+    + '<div style="width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>Loading...</div></div>';
+  try {
+    const [pendingRes, followingRes, followersRes] = await Promise.all([
+      apiGet('/api/follows/pending'),
+      apiGet('/api/follows/following'),
+      apiGet('/api/follows/followers'),
+    ]);
+    renderFriendsView(pendingRes.requests || [], followingRes.following || [], followersRes.followers || []);
+  } catch(e) {
+    const b = document.getElementById('friends-view-body');
+    if (b) b.innerHTML = '<p style="text-align:center;color:var(--subtext);font-size:13px;padding:40px 20px;">Could not load friends. Try again.</p>';
+  }
+}
+
+function renderFriendsView(pending, following, followers) {
+  const body = document.getElementById('friends-view-body');
+  if (!body) return;
+  let html = '';
+  if (pending.length > 0) {
+    html += '<div class="section-hdr">Follow requests (' + pending.length + ')</div>';
+    pending.forEach(function(u) {
+      html += '<div class="user-row" style="cursor:default;">' + userAvatarHtml(u, 44)
+        + '<div class="user-info"><div class="user-handle">@' + escHtml(u.username || '') + '</div>'
+        + '<div class="user-sub">' + escHtml(u.display_name || '') + '</div></div>'
+        + '<div class="req-actions">'
+        + '<button class="req-accept" onclick="acceptRequest(' + u.id + ')">Accept</button>'
+        + '<button class="req-decline" onclick="declineRequest(' + u.id + ')">✕</button>'
+        + '</div></div>';
+    });
+  }
+  html += '<div class="section-hdr">Following (' + following.length + ')</div>';
+  if (following.length === 0) {
+    html += '<div style="padding:24px 16px;color:var(--subtext);font-size:13px;text-align:center;">Not following anyone yet.<br><br>'
+      + '<button onclick="openFriendsSearch()" style="background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Find people to follow</button></div>';
+  } else {
+    following.forEach(function(u) {
+      html += '<div class="user-row" onclick="openUserProfile(\'' + escHtml(u.username || '') + '\')">' + userAvatarHtml(u, 44)
+        + '<div class="user-info"><div class="user-handle">@' + escHtml(u.username || '') + '</div>'
+        + '<div class="user-sub">' + (u.record_count || 0) + ' records · ' + (u.is_public ? 'Public' : 'Private') + '</div></div>'
+        + '<span style="font-size:12px;color:var(--subtext);">' + (u.status === 'pending' ? 'Requested' : 'Following') + '</span></div>';
+    });
+  }
+  html += '<div class="section-hdr">Followers (' + followers.length + ')</div>';
+  if (followers.length === 0) {
+    html += '<div style="padding:20px 16px;color:var(--subtext);font-size:13px;text-align:center;">No followers yet.</div>';
+  } else {
+    followers.forEach(function(u) {
+      html += '<div class="user-row" onclick="openUserProfile(\'' + escHtml(u.username || '') + '\')">' + userAvatarHtml(u, 44)
+        + '<div class="user-info"><div class="user-handle">@' + escHtml(u.username || '') + '</div>'
+        + '<div class="user-sub">' + (u.record_count || 0) + ' records</div></div></div>';
+    });
+  }
+  body.innerHTML = html;
+}
+
+// ── User search ──────────────────────────────────────────────
+function openFriendsSearch() {
+  const body = document.getElementById('friends-view-body');
+  if (!body) return;
+  body.innerHTML = '<div style="padding:16px;">'
+    + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">'
+    + '<button onclick="renderFriendsApp()" style="background:none;border:none;color:var(--subtext);font-size:22px;cursor:pointer;padding:4px 8px;">←</button>'
+    + '<input id="friends-search-input" type="text" placeholder="Search by username..." autocorrect="off" autocapitalize="none" spellcheck="false" '
+    + 'style="flex:1;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:11px 14px;font-size:14px;color:var(--text);font-family:inherit;" '
+    + 'oninput="handleFriendsSearch(this.value)"></div>'
+    + '<div id="friends-search-results"></div></div>';
+  setTimeout(function() { const inp = document.getElementById('friends-search-input'); if (inp) inp.focus(); }, 200);
+}
+
+let _friendsSearchTimer = null;
+function handleFriendsSearch(val) {
+  clearTimeout(_friendsSearchTimer);
+  const q = val.trim();
+  const el = document.getElementById('friends-search-results');
+  if (!el) return;
+  if (q.length < 2) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div style="color:var(--subtext);font-size:13px;padding:10px 0;">Searching...</div>';
+  _friendsSearchTimer = setTimeout(async function() {
+    try {
+      const data = await apiGet('/api/users/search?q=' + encodeURIComponent(q));
+      const users = data.users || [];
+      if (!users.length) { el.innerHTML = '<div style="color:var(--subtext);font-size:13px;padding:20px 0;text-align:center;">No users found.</div>'; return; }
+      el.innerHTML = users.map(function(u) {
+        const st = u.follow_status || 'none';
+        const lbl = st === 'accepted' ? 'Following' : st === 'pending' ? 'Requested' : 'Follow';
+        return '<div class="user-row" onclick="openUserProfile(\'' + escHtml(u.username || '') + '\')">'
+          + userAvatarHtml(u, 44)
+          + '<div class="user-info"><div class="user-handle">@' + escHtml(u.username || '') + '</div>'
+          + '<div class="user-sub">' + (u.record_count || 0) + ' records · ' + (u.is_public ? 'Public' : 'Private') + '</div></div>'
+          + '<button class="follow-btn ' + st + '" onclick="event.stopPropagation();toggleFollow(' + u.id + ',\'' + st + '\',this);">' + lbl + '</button></div>';
+      }).join('');
+    } catch(e) { el.innerHTML = '<div style="color:var(--subtext);font-size:13px;padding:10px 0;">Search failed.</div>'; }
+  }, 400);
+}
+
+// ── Follow actions ───────────────────────────────────────────
+async function toggleFollow(userId, currentStatus, btn) {
+  if (btn) btn.disabled = true;
+  try {
+    if (currentStatus === 'none') {
+      const data = await apiPost('/api/follow/' + userId, {});
+      const ns = data.status;
+      if (btn) { btn.className = 'follow-btn ' + ns; btn.textContent = ns === 'accepted' ? 'Following' : 'Requested'; }
+    } else {
+      await apiDelete('/api/follow/' + userId);
+      if (btn) { btn.className = 'follow-btn none'; btn.textContent = 'Follow'; }
+    }
+  } catch(e) { alert('Could not update follow status.'); }
+  if (btn) btn.disabled = false;
+}
+
+async function acceptRequest(userId) {
+  try { await apiPost('/api/follow/' + userId + '/accept', {}); renderFriendsApp(); checkPendingBadge(); }
+  catch(e) { alert('Could not accept request.'); }
+}
+
+async function declineRequest(userId) {
+  try { await apiPost('/api/follow/' + userId + '/decline', {}); renderFriendsApp(); checkPendingBadge(); }
+  catch(e) { alert('Could not decline request.'); }
+}
+
+async function checkPendingBadge() {
+  if (!CURRENT_USER || !CURRENT_USER.username) return;
+  try {
+    const data = await apiGet('/api/follows/pending');
+    const count = (data.requests || []).length;
+    const badge = document.getElementById('friends-badge');
+    if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'block' : 'none'; }
+  } catch(e) {}
+}
+
+// ── Profile view ─────────────────────────────────────────────
+function userAvatarHtml(u, size) {
+  const sz = size || 44;
+  if (u.avatar_url) {
+    return '<img src="' + escHtml(u.avatar_url) + '" style="width:' + sz + 'px;height:' + sz + 'px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid var(--border);" loading="lazy">';
+  }
+  const initial = ((u.username || u.display_name || '?').charAt(0)).toUpperCase();
+  return '<div class="user-avatar-sm" style="width:' + sz + 'px;height:' + sz + 'px;font-size:' + Math.round(sz * 0.4) + 'px;flex-shrink:0;">' + escHtml(initial) + '</div>';
+}
+
+async function openUserProfile(username) {
+  if (!username) return;
+  const overlay = document.getElementById('profile-overlay');
+  const content = document.getElementById('profile-content');
+  if (!overlay || !content) return;
+  content.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:300px;"><div style="width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;"></div></div>';
+  overlay.classList.add('open');
+  try {
+    const profile = await apiGet('/api/users/' + encodeURIComponent(username));
+    await renderProfilePanel(profile);
+  } catch(e) {
+    content.innerHTML = '<div style="padding:80px 20px;text-align:center;color:var(--subtext);">'
+      + '<button class="detail-back-btn" onclick="closeProfile()" style="margin:0 auto 20px;display:flex;">←</button>'
+      + 'Could not load profile.</div>';
+  }
+}
+
+function closeProfile() {
+  document.getElementById('profile-overlay').classList.remove('open');
+}
+
+async function renderProfilePanel(profile) {
+  const content = document.getElementById('profile-content');
+  if (!content) return;
+  const isSelf = profile.isSelf;
+  const followStatus = profile.followStatus || 'none';
+  const canView = profile.canView;
+
+  let followBtnHtml = '';
+  if (isSelf) {
+    followBtnHtml = '<button onclick="openSettings()" style="background:var(--card);border:var(--border-w) solid var(--border);border-radius:20px;padding:8px 20px;font-size:13px;color:var(--text);cursor:pointer;font-family:inherit;">Edit profile</button>';
+  } else {
+    const lbl = followStatus === 'accepted' ? 'Following' : followStatus === 'pending' ? 'Requested' : 'Follow';
+    followBtnHtml = '<button class="follow-btn ' + followStatus + '" id="profile-follow-btn" onclick="toggleFollow(' + profile.id + ',\'' + followStatus + '\',this);">' + lbl + '</button>';
+  }
+
+  const avatarHtml = profile.avatarUrl
+    ? '<img src="' + escHtml(profile.avatarUrl) + '" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--border);">'
+    : '<div class="profile-avatar">' + escHtml(((profile.username || '?').charAt(0)).toUpperCase()) + '</div>';
+
+  let html = '<div style="position:sticky;top:0;z-index:10;display:flex;align-items:center;padding:48px 16px 12px;background:linear-gradient(to bottom,var(--bg) 60%,transparent);">'
+    + '<button class="detail-back-btn" onclick="closeProfile()">←</button></div>'
+    + '<div class="profile-hero">' + avatarHtml
+    + '<div style="text-align:center;"><div class="profile-username">@' + escHtml(profile.username || '') + '</div>'
+    + (profile.displayName ? '<div class="profile-displayname">' + escHtml(profile.displayName) + '</div>' : '') + '</div>'
+    + '<div class="profile-stats">'
+    + '<div class="profile-stat"><div class="profile-stat-num">' + (profile.recordCount || 0) + '</div><div class="profile-stat-lbl">Records</div></div>'
+    + '<div class="profile-stat"><div class="profile-stat-num">' + (profile.followingCount || 0) + '</div><div class="profile-stat-lbl">Following</div></div>'
+    + '<div class="profile-stat"><div class="profile-stat-num">' + (profile.followerCount || 0) + '</div><div class="profile-stat-lbl">Followers</div></div>'
+    + '</div>' + followBtnHtml + '</div>'
+    + '<div style="padding:16px;">';
+
+  if (profile.bio) html += '<p style="font-size:14px;color:var(--text);line-height:1.6;margin-bottom:16px;">' + escHtml(profile.bio) + '</p>';
+  if (!isSelf) html += '<div style="font-size:11px;color:var(--subtext);margin-bottom:16px;">' + (profile.isPublic ? '🌐 Public account' : '🔒 Private account') + '</div>';
+
+  if (canView && (profile.setupDescription || profile.setupPhoto)) {
+    html += '<div style="margin-bottom:16px;"><div class="section-hdr" style="margin:0 -16px 10px;padding-left:0;border-top:var(--border-w) solid var(--border);">🎛️ Their setup</div>';
+    if (profile.setupPhoto) html += '<img src="' + escHtml(profile.setupPhoto) + '" style="width:100%;border-radius:var(--radius);margin-bottom:8px;max-height:280px;object-fit:cover;">';
+    if (profile.setupDescription) html += '<p style="font-size:13px;color:var(--subtext);line-height:1.6;">' + escHtml(profile.setupDescription) + '</p>';
+    html += '</div>';
+  }
+  if (canView && (profile.storageDescription || profile.storagePhoto)) {
+    html += '<div style="margin-bottom:16px;"><div class="section-hdr" style="margin:0 -16px 10px;padding-left:0;border-top:var(--border-w) solid var(--border);">📦 How they store</div>';
+    if (profile.storagePhoto) html += '<img src="' + escHtml(profile.storagePhoto) + '" style="width:100%;border-radius:var(--radius);margin-bottom:8px;max-height:280px;object-fit:cover;">';
+    if (profile.storageDescription) html += '<p style="font-size:13px;color:var(--subtext);line-height:1.6;">' + escHtml(profile.storageDescription) + '</p>';
+    html += '</div>';
+  }
+  html += '</div>';
+
+  if (!canView) {
+    html += '<div class="locked-collection"><div style="font-size:32px;margin-bottom:8px;">🔒</div>'
+      + '<div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px;">Private collection</div>'
+      + '<div style="font-size:13px;color:var(--subtext);">Follow @' + escHtml(profile.username || '') + ' to see their records.</div></div>';
+  } else {
+    html += '<div class="section-hdr">Their collection</div>'
+      + '<div id="profile-collection" style="padding:0 12px 100px;"><div style="text-align:center;padding:30px 0;color:var(--subtext);font-size:13px;">Loading...</div></div>';
+  }
+
+  content.innerHTML = html;
+
+  if (canView && profile.username) {
+    try {
+      const colData = await apiGet('/api/users/' + encodeURIComponent(profile.username) + '/collection');
+      const profileReleases = colData.releases || [];
+      const colEl = document.getElementById('profile-collection');
+      if (!colEl) return;
+      if (!profileReleases.length) { colEl.innerHTML = '<p style="text-align:center;color:var(--subtext);font-size:13px;padding:30px 0;">No records yet.</p>'; return; }
+      colEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-top:12px;">'
+        + profileReleases.map(function(r) {
+          const bi = r.basic_information;
+          const art = bi.cover_image || bi.thumb || '';
+          const imgEl = (art && art !== 'https://st.discogs.com/')
+            ? '<img src="' + escHtml(art) + '" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;" loading="lazy">'
+            : '<div style="width:100%;aspect-ratio:1;background:var(--artbg);display:flex;align-items:center;justify-content:center;"><div class="disc-icon"><div class="disc-hole"></div></div></div>';
+          return '<div style="background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);overflow:hidden;">' + imgEl
+            + '<div style="padding:8px 10px;"><div style="font-size:11px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(bi.title) + '</div>'
+            + '<div style="font-size:10px;color:var(--subtext);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(bi.artists?.[0]?.name || '') + '</div></div></div>';
+        }).join('') + '</div>';
+    } catch(e) {
+      const colEl = document.getElementById('profile-collection');
+      if (colEl) colEl.innerHTML = '<p style="color:var(--subtext);font-size:13px;padding:20px;text-align:center;">Could not load collection.</p>';
+    }
+  }
+}
+
+// ── Record owners (discovery) ─────────────────────────────────
+async function loadRecordOwners(releaseId) {
+  const el = document.getElementById('record-owners-section');
+  if (!el) return;
+  try {
+    const data = await apiGet('/api/records/' + encodeURIComponent(releaseId) + '/owners');
+    const owners = data.owners || [];
+    if (!owners.length) return;
+    el.innerHTML = '<div class="detail-section-title" style="margin-top:0;">Also owned by ' + owners.length + ' Wax ' + (owners.length === 1 ? 'user' : 'users') + '</div>'
+      + owners.slice(0, 5).map(function(u) {
+        const st = u.follow_status || 'none';
+        const lbl = st === 'accepted' ? 'Following' : st === 'pending' ? 'Req\'d' : 'Follow';
+        return '<div class="user-row" style="padding:8px 0;" onclick="openUserProfile(\'' + escHtml(u.username || '') + '\')">'
+          + userAvatarHtml(u, 36)
+          + '<div class="user-info"><div style="font-size:13px;font-weight:500;color:var(--text);">@' + escHtml(u.username || '') + '</div>'
+          + '<div style="font-size:11px;color:var(--subtext);">' + (u.common_count || 0) + ' in common</div></div>'
+          + '<button class="follow-btn ' + st + '" style="font-size:11px;padding:5px 12px;" onclick="event.stopPropagation();toggleFollow(' + u.id + ',\'' + st + '\',this);">' + lbl + '</button></div>';
+      }).join('')
+      + (owners.length > 5 ? '<div style="font-size:12px;color:var(--subtext);text-align:center;padding:8px 0;">+ ' + (owners.length - 5) + ' more</div>' : '');
+  } catch(e) {}
+}
+
+// ── Profile settings section (inside Settings panel) ─────────
+function renderProfileSettingsSection() {
+  const el = document.getElementById('profile-settings-section');
+  if (!el || !CURRENT_USER) return;
+  const u = CURRENT_USER;
+  el.innerHTML = ''
+    // Username
+    + '<div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--subtext);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">Username</div>'
+    + (u.username
+        ? '<div style="display:flex;align-items:center;gap:8px;">'
+          + '<div style="flex:1;font-size:14px;color:var(--text);background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:10px 14px;">@' + escHtml(u.username) + '</div>'
+          + '<button onclick="CURRENT_USER.username=null;renderProfileSettingsSection();" style="font-size:12px;color:var(--subtext);background:none;border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:10px;cursor:pointer;font-family:inherit;">Change</button>'
+          + '</div>'
+        : '<div style="display:flex;gap:8px;">'
+          + '<input id="settings-username-input" type="text" placeholder="Pick a username..." autocorrect="off" autocapitalize="none" spellcheck="false" maxlength="30" '
+          + 'style="flex:1;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:14px;color:var(--text);font-family:inherit;" '
+          + 'oninput="this.value=this.value.toLowerCase();" onkeydown="if(event.key===\'Enter\')saveUsernameFromSettings();">'
+          + '<button onclick="saveUsernameFromSettings()" style="background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Save</button>'
+          + '</div>')
+    + '<div id="settings-username-error" style="font-size:11px;color:#e05050;min-height:16px;margin-top:4px;"></div></div>'
+    // Privacy toggle
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:10px 0;border-top:var(--border-w) solid var(--border);border-bottom:var(--border-w) solid var(--border);">'
+    + '<div><div style="font-size:13px;color:var(--text);">Public account</div>'
+    + '<div style="font-size:11px;color:var(--subtext);margin-top:2px;">Anyone can follow without approval</div></div>'
+    + '<button onclick="togglePrivacy()" style="width:44px;height:24px;border-radius:12px;border:none;cursor:pointer;background:' + (u.isPublic ? 'var(--accent)' : 'var(--border)') + ';position:relative;transition:background 0.2s;">'
+    + '<div style="position:absolute;top:2px;left:' + (u.isPublic ? '22' : '2') + 'px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left 0.2s;"></div></button>'
+    + '</div>'
+    // Bio
+    + '<div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--subtext);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">Bio</div>'
+    + '<textarea id="settings-bio" placeholder="Tell people about yourself..." rows="3" '
+    + 'style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--text);font-family:inherit;resize:none;">'
+    + escHtml(u.bio || '') + '</textarea></div>'
+    // Setup
+    + '<div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--subtext);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">Your setup</div>'
+    + (u.setupPhoto ? '<img src="' + escHtml(u.setupPhoto) + '" style="width:100%;border-radius:var(--radius);margin-bottom:8px;max-height:200px;object-fit:cover;">' : '')
+    + '<textarea id="settings-setup-desc" placeholder="Describe your turntable, amp, speakers..." rows="2" '
+    + 'style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--text);font-family:inherit;resize:none;margin-bottom:6px;">'
+    + escHtml(u.setupDescription || '') + '</textarea>'
+    + '<input type="file" id="setup-photo-input" accept="image/*" style="display:none;" onchange="handleSetupPhoto(this)">'
+    + '<button onclick="document.getElementById(\'setup-photo-input\').click()" style="font-size:12px;color:var(--subtext);background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:8px 12px;cursor:pointer;font-family:inherit;">📷 ' + (u.setupPhoto ? 'Change photo' : 'Add photo') + '</button></div>'
+    // Storage
+    + '<div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--subtext);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">How you store</div>'
+    + (u.storagePhoto ? '<img src="' + escHtml(u.storagePhoto) + '" style="width:100%;border-radius:var(--radius);margin-bottom:8px;max-height:200px;object-fit:cover;">' : '')
+    + '<textarea id="settings-storage-desc" placeholder="How do you store and display your records?" rows="2" '
+    + 'style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--text);font-family:inherit;resize:none;margin-bottom:6px;">'
+    + escHtml(u.storageDescription || '') + '</textarea>'
+    + '<input type="file" id="storage-photo-input" accept="image/*" style="display:none;" onchange="handleStoragePhoto(this)">'
+    + '<button onclick="document.getElementById(\'storage-photo-input\').click()" style="font-size:12px;color:var(--subtext);background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:8px 12px;cursor:pointer;font-family:inherit;">📷 ' + (u.storagePhoto ? 'Change photo' : 'Add photo') + '</button></div>'
+    // Save
+    + '<button onclick="saveProfile()" style="width:100%;background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);padding:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Save profile</button>'
+    + '<div id="profile-save-status" style="font-size:11px;color:var(--subtext);text-align:center;margin-top:8px;min-height:16px;"></div>';
+}
+
+async function saveUsernameFromSettings() {
+  const input = document.getElementById('settings-username-input');
+  const errEl = document.getElementById('settings-username-error');
+  const username = (input ? input.value : '').trim().toLowerCase();
+  if (!/^[a-z0-9._-]{2,30}$/.test(username)) {
+    if (errEl) errEl.textContent = 'Must be 2–30 chars: letters, numbers, dots, hyphens, underscores.';
+    return;
+  }
+  try {
+    await apiPost('/api/auth/username', { username });
+    CURRENT_USER.username = username;
+    renderProfileSettingsSection();
+  } catch(e) {
+    if (errEl) errEl.textContent = e.message || 'Username already taken.';
+  }
+}
+
+async function togglePrivacy() {
+  const newVal = !CURRENT_USER.isPublic;
+  try {
+    await apiPost('/api/auth/privacy', { isPublic: newVal });
+    CURRENT_USER.isPublic = newVal;
+    renderProfileSettingsSection();
+  } catch(e) { alert('Could not update privacy setting.'); }
+}
+
+async function saveProfile() {
+  const bio = (document.getElementById('settings-bio') || {}).value || '';
+  const setupDesc = (document.getElementById('settings-setup-desc') || {}).value || '';
+  const storageDesc = (document.getElementById('settings-storage-desc') || {}).value || '';
+  const statusEl = document.getElementById('profile-save-status');
+  if (statusEl) statusEl.textContent = 'Saving...';
+  try {
+    await apiPost('/api/auth/profile', { bio, setupDescription: setupDesc, storageDescription: storageDesc });
+    CURRENT_USER.bio = bio; CURRENT_USER.setupDescription = setupDesc; CURRENT_USER.storageDescription = storageDesc;
+    if (statusEl) { statusEl.textContent = '✓ Saved'; setTimeout(function() { if (statusEl) statusEl.textContent = ''; }, 2000); }
+  } catch(e) { if (statusEl) statusEl.textContent = 'Could not save. Try again.'; }
+}
+
+function handleSetupPhoto(input) {
+  const file = input.files && input.files[0];
+  if (!file || file.size > 3 * 1024 * 1024) { alert('Please choose an image under 3MB.'); return; }
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try { await apiPost('/api/auth/setup-photo', { photoUrl: e.target.result }); CURRENT_USER.setupPhoto = e.target.result; renderProfileSettingsSection(); }
+    catch(err) { alert('Could not save photo.'); }
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleStoragePhoto(input) {
+  const file = input.files && input.files[0];
+  if (!file || file.size > 3 * 1024 * 1024) { alert('Please choose an image under 3MB.'); return; }
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try { await apiPost('/api/auth/storage-photo', { photoUrl: e.target.result }); CURRENT_USER.storagePhoto = e.target.result; renderProfileSettingsSection(); }
+    catch(err) { alert('Could not save photo.'); }
+  };
+  reader.readAsDataURL(file);
+}
 
 applyTheme(currentTheme);
 init();
