@@ -525,16 +525,16 @@
       margin-left: -360px !important;
       left: 50% !important;
     }
-    .settings-panel, .chat-panel, #lyrics-panel {
+    .settings-panel, .chat-panel, #lyrics-panel, #themes-panel {
       max-width: 680px !important;
       left: 50% !important;
       margin-left: -340px !important;
       right: auto !important;
     }
-    .settings-panel:not(.open), .chat-panel:not(.open), #lyrics-panel:not(.open) {
+    .settings-panel:not(.open), .chat-panel:not(.open), #lyrics-panel:not(.open), #themes-panel:not(.open) {
       visibility: hidden;
     }
-    .settings-panel.open, .chat-panel.open, #lyrics-panel.open {
+    .settings-panel.open, .chat-panel.open, #lyrics-panel.open, #themes-panel.open {
       visibility: visible;
     }
 
@@ -591,23 +591,8 @@
 <div class="settings-panel" id="settings-panel">
   <div class="settings-header">
     <button class="nav-btn" onclick="closeSettings()" aria-label="Close settings">&#8592;</button>
-    <span class="settings-title">Themes & skins</span>
+    <span class="settings-title">Settings</span>
   </div>
-
-  <!-- STICKY PREVIEW — always visible -->
-  <div class="theme-preview-sticky">
-    <p class="preview-label">Live preview</p>
-    <div class="theme-preview-card" id="theme-preview-card">
-      <div class="preview-disc-sm" id="prev-disc-sm"><div class="hole"></div></div>
-      <div class="preview-info">
-        <div class="preview-rec-title" id="prev-rec-title-sm">The Dark Side of the Moon</div>
-        <div class="preview-rec-sub" id="prev-rec-sub-sm">Pink Floyd · 1973</div>
-      </div>
-      <div class="preview-accent-dot" id="prev-accent-dot"></div>
-    </div>
-  </div>
-
-  <!-- Scrollable controls -->
   <div class="settings-body" id="settings-body">
     <div style="padding:16px;border-bottom:var(--border-w) solid var(--border);">
       <div class="settings-section-title" style="margin-bottom:12px;">Your account</div>
@@ -639,15 +624,24 @@
       <div class="settings-section-title" style="margin-bottom:10px;">Your collection</div>
       <p style="font-size:12px;color:var(--subtext);line-height:1.6;margin-bottom:10px;">Add records by searching — no Discogs account needed.</p>
       <div style="display:flex;gap:8px;">
-        <button onclick="openAddRecord()" style="flex:1;font-size:13px;padding:10px;background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);cursor:pointer;font-family:inherit;font-weight:600;">🔍 Search</button>
+        <button onclick="openAddRecord();closeSettings();" style="flex:1;font-size:13px;padding:10px;background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);cursor:pointer;font-family:inherit;font-weight:600;">🔍 Search</button>
       </div>
     </div>
 
+    <div style="text-align:center;font-size:9px;color:var(--subtext);padding:16px 0 18px;opacity:0.6;">build: phase-a-9</div>
+  </div>
+</div>
+
+<!-- Themes Panel (palette icon) -->
+<div class="settings-panel" id="themes-panel">
+  <div class="settings-header">
+    <button class="nav-btn" onclick="closeThemes()" aria-label="Close themes">&#8592;</button>
+    <span class="settings-title">Themes</span>
+  </div>
+  <div class="settings-body" id="themes-body">
     <div style="padding:16px;">
-      <div class="settings-section-title" style="margin-bottom:12px;">Choose a theme</div>
-      <div id="preset-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+      <div id="themes-preset-list" style="display:flex;flex-direction:column;gap:10px;"></div>
     </div>
-    <div style="text-align:center;font-size:9px;color:var(--subtext);padding:4px 0 18px;opacity:0.6;">build: phase-a-8</div>
   </div>
 </div>
 
@@ -755,7 +749,7 @@ function applyTheme(t, save) {
 }
 
 function buildPresetList() {
-  const list = document.getElementById('preset-list');
+  const list = document.getElementById('themes-preset-list');
   if (!list) return;
   list.innerHTML = '';
   PRESETS.forEach(function(p) {
@@ -862,7 +856,7 @@ function renderApp() {
             <div class="nav-sub">${releases.length} records</div>
           </div>
           <div style="display:flex;gap:8px;">
-            <button class="nav-btn" onclick="openSettings()" title="Themes" style="font-size:18px;">🎨</button>
+            <button class="nav-btn" onclick="openThemes()" title="Themes" style="font-size:18px;">🎨</button>
             <button class="nav-btn" onclick="openSettings()" aria-label="Settings">&#9881;</button>
           </div>
         </div>
@@ -896,7 +890,7 @@ function renderApp() {
           <div class="nav-sub">${releases.length} records</div>
         </div>
         <div style="display:flex;gap:8px;">
-          <button class="nav-btn" onclick="openSettings()" title="Themes" style="font-size:18px;">🎨</button>
+          <button class="nav-btn" onclick="openThemes()" title="Themes" style="font-size:18px;">🎨</button>
           <button class="nav-btn" onclick="openSettings()" aria-label="Settings">&#9881;</button>
         </div>
       </div>
@@ -2344,10 +2338,19 @@ async function sendMessage(text, hidden) {
   if (sendBtn) sendBtn.disabled = false;
 }
 
+function openThemes() {
+  document.getElementById('themes-panel').classList.add('open');
+  document.getElementById('themes-body').scrollTop = 0;
+  buildPresetList();
+}
+
+function closeThemes() {
+  document.getElementById('themes-panel').classList.remove('open');
+}
+
 function openSettings() {
   document.getElementById('settings-panel').classList.add('open');
   document.getElementById('settings-body').scrollTop = 0;
-  buildPresetList();
   renderAccountSection();
   renderProfileSettingsSection();
 }
@@ -2472,7 +2475,7 @@ function handleSearchTypeahead(val) {
     try {
       const data = await apiGet('/api/search-release?q=' + encodeURIComponent(trimmed) + '&page=1');
       window._searchResultsCache = data.results || [];
-      renderSearchResults(data.results || [], false);
+      renderSearchResults(data.results || [], data.hasMore);
     } catch(e) {
       document.getElementById('search-results').innerHTML =
         '<p style="text-align:center;color:var(--subtext);font-size:13px;padding:20px 0;">Search failed. Try again.</p>';
