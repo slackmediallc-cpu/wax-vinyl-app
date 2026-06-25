@@ -647,7 +647,7 @@
       <div class="settings-section-title" style="margin-bottom:12px;">Choose a theme</div>
       <div id="preset-list" style="display:flex;flex-direction:column;gap:10px;"></div>
     </div>
-    <div style="text-align:center;font-size:9px;color:var(--subtext);padding:4px 0 18px;opacity:0.6;">build: phase-a-7</div>
+    <div style="text-align:center;font-size:9px;color:var(--subtext);padding:4px 0 18px;opacity:0.6;">build: phase-a-8</div>
   </div>
 </div>
 
@@ -858,7 +858,7 @@ function renderApp() {
       <div id="desktop-sidebar">
         <div class="nav">
           <div>
-            <div class="nav-title">Wax</div>
+            <div class="nav-title" onclick="goHome()" style="cursor:pointer;" title="Back to collection">Wax</div>
             <div class="nav-sub">${releases.length} records</div>
           </div>
           <div style="display:flex;gap:8px;">
@@ -892,7 +892,7 @@ function renderApp() {
     document.getElementById('app-content').innerHTML = `
       <div class="nav">
         <div>
-          <div class="nav-title">Wax</div>
+          <div class="nav-title" onclick="goHome()" style="cursor:pointer;" title="Back to collection">Wax</div>
           <div class="nav-sub">${releases.length} records</div>
         </div>
         <div style="display:flex;gap:8px;">
@@ -3062,8 +3062,20 @@ const ORACLE_SLOGANS = [
 
 let currentTab = 'collection';
 
+// Always-available home navigation — tapping Wax logo or using back from any sub-view
+function goHome() {
+  currentTab = 'collection';
+  document.querySelectorAll('.tab-item').forEach(function(el) { el.classList.remove('active'); });
+  renderApp();
+}
+
 // ── Tab switching ────────────────────────────────────────────
 function switchTab(tab) {
+  // Tapping Friends when already in Friends goes back home
+  if (tab === 'friends' && currentTab === 'friends') {
+    goHome();
+    return;
+  }
   currentTab = tab;
   document.querySelectorAll('.tab-item').forEach(function(el) { el.classList.remove('active'); });
   const tabEl = document.getElementById('tab-' + tab);
@@ -3126,9 +3138,15 @@ async function submitUsernameGate() {
 // ── Friends main view ────────────────────────────────────────
 async function renderFriendsApp() {
   document.getElementById('app-content').innerHTML = ''
-    + '<div class="nav"><div><div class="nav-title">Friends</div>'
-    + '<div class="nav-sub">@' + escHtml(CURRENT_USER.username || '') + '</div></div>'
-    + '<button class="nav-btn" onclick="openFriendsSearch()" title="Find friends" style="font-size:18px;">🔍</button></div>'
+    + '<div class="nav">'
+    + '<div onclick="goHome()" style="cursor:pointer;display:flex;align-items:center;gap:4px;">'
+    + '<span style="font-size:18px;color:var(--subtext);line-height:1;">‹</span>'
+    + '<div><div class="nav-title" style="font-size:18px;">Wax</div></div>'
+    + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;">'
+    + '<div style="font-size:16px;font-weight:600;color:var(--subtext);">Friends</div>'
+    + '<button class="nav-btn" onclick="openFriendsSearch()" title="Find friends" style="font-size:18px;">🔍</button>'
+    + '</div></div>'
     + '<div class="friends-view" id="friends-view-body">'
     + '<div style="display:flex;align-items:center;gap:12px;padding:40px 20px;color:var(--subtext);font-size:13px;">'
     + '<div style="width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>Loading...</div></div>';
