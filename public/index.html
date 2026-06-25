@@ -2263,7 +2263,7 @@ function buildSystemPrompt(bi) {
 
 async function sendContextualOpener(bi) {
     const opener = ["Now listening to ", bi.title, " by ", (bi.artists?.[0]?.name || "this artist"),
-    ". Give me a one-paragraph intro to this album. Set the scene and get me excited for what I am about to hear. Under 80 words."].join("");
+    ". Give me a short intro to this album — one paragraph, under 80 words. Focus on something genuinely interesting: a surprising production detail, a lesser-known backstory, a tension in the recording, or a connection to something bigger. End with either a thought-provoking observation or a specific question that invites conversation. Do not end with a corny call to action like 'settle in' or 'let it wash over you'."].join("");
   await sendMessage(opener, true); // true = hide the user message
 }
 
@@ -2452,9 +2452,14 @@ function renderSearchUI() {
 }
 
 let _searchDebounceTimer = null;
+let _searchCurrentQuery = '';
+let _searchCurrentPage = 1;
+
 function handleSearchTypeahead(val) {
   clearTimeout(_searchDebounceTimer);
   const trimmed = val.trim();
+  _searchCurrentQuery = trimmed;
+  _searchCurrentPage = 1;
   if (trimmed.length < 3) {
     document.getElementById('search-results').innerHTML = '';
     return;
@@ -2465,8 +2470,9 @@ function handleSearchTypeahead(val) {
     + 'Searching...</div>';
   _searchDebounceTimer = setTimeout(async function() {
     try {
-      const data = await apiGet('/api/search-release?q=' + encodeURIComponent(trimmed));
-      renderSearchResults(data.results || []);
+      const data = await apiGet('/api/search-release?q=' + encodeURIComponent(trimmed) + '&page=1');
+      window._searchResultsCache = data.results || [];
+      renderSearchResults(data.results || [], false);
     } catch(e) {
       document.getElementById('search-results').innerHTML =
         '<p style="text-align:center;color:var(--subtext);font-size:13px;padding:20px 0;">Search failed. Try again.</p>';
@@ -2474,31 +2480,38 @@ function handleSearchTypeahead(val) {
   }, 450);
 }
 
+async function loadMoreSearchResults() {
+  const btn = document.getElementById('search-more-btn');
+  if (btn) { btn.textContent = 'Loading...'; btn.disabled = true; }
+  _searchCurrentPage++;
+  try {
+    const data = await apiGet('/api/search-release?q=' + encodeURIComponent(_searchCurrentQuery) + '&page=' + _searchCurrentPage);
+    const newItems = data.results || [];
+    window._searchResultsCache = (window._searchResultsCache || []).concat(newItems);
+    // Remove the show more button before appending new rows
+    const existing = document.getElementById('search-more-btn');
+    if (existing) existing.parentElement.remove();
+    appendSearchResults(newItems, data.hasMore);
+  } catch(e) {
+    if (btn) { btn.textContent = 'Show more'; btn.disabled = false; }
+  }
+}
+
 async function runRecordSearch() {
   const val = (document.getElementById('search-record-input') || {}).value || '';
   handleSearchTypeahead(val);
 }
 
-function renderSearchResults(items) {
-  const results = document.getElementById('search-results');
-  if (!results) return;
-  if (items.length === 0) {
-    results.innerHTML = '<p style="text-align:center;color:var(--subtext);font-size:13px;padding:40px 0;">No results found. Try a different search.</p>';
-    return;
-  }
-  // Build a set of owned release IDs and normalised titles so we can badge results
-  // that are already in the collection — useful when browsing an artist's catalogue.
+function buildSearchResultRows(items, startIdx) {
   const ownedIds = new Set(releases.map(function(r) { return String(r.id); }));
   const ownedTitles = new Set(releases.map(function(r) {
     const bi = r.basic_information;
     const artist = (bi.artists[0]?.name || '').replace(/\s*\(\d+\)$/, '').toLowerCase().trim();
     return artist + '|' + bi.title.toLowerCase().trim();
   }));
-
-  window._searchResultsCache = items;
-  results.innerHTML = items.map(function(item, i) {
+  return items.map(function(item, i) {
+    const idx = startIdx + i;
     const img = item.coverImage || item.thumb || '';
-    // Check by release ID first, then by normalised "artist|title" string
     const dashSplit = item.title.split(' - ');
     const searchArtist = (dashSplit.length >= 2 ? dashSplit[0] : '').toLowerCase().trim();
     const searchTitle  = (dashSplit.length >= 2 ? dashSplit.slice(1).join(' - ') : item.title).toLowerCase().trim();
@@ -2509,7 +2522,7 @@ function renderSearchResults(items) {
     const badge = owned
       ? '<span style="font-size:10px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:2px 5px;white-space:nowrap;">OWNED</span>'
       : '<span style="font-size:20px;color:var(--accent);">+</span>';
-    return '<div id="search-row-' + i + '" onclick="' + (owned ? '' : 'confirmAddRecord(' + i + ')') + '" '
+    return '<div id="search-row-' + idx + '" onclick="' + (owned ? '' : 'confirmAddRecord(' + idx + ')') + '" '
       + 'style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:var(--border-w) solid var(--border);cursor:' + (owned ? 'default' : 'pointer') + ';opacity:' + (owned ? '0.6' : '1') + ';">'
       + imgEl
       + '<div style="flex:1;min-width:0;">'
@@ -2519,6 +2532,28 @@ function renderSearchResults(items) {
       + badge
       + '</div>';
   }).join('');
+}
+
+function renderSearchResults(items, hasMore) {
+  const results = document.getElementById('search-results');
+  if (!results) return;
+  if (items.length === 0) {
+    results.innerHTML = '<p style="text-align:center;color:var(--subtext);font-size:13px;padding:40px 0;">No results found. Try a different search.</p>';
+    return;
+  }
+  window._searchResultsCache = items;
+  results.innerHTML = buildSearchResultRows(items, 0)
+    + (hasMore !== false ? '<div><button id="search-more-btn" onclick="loadMoreSearchResults()" style="width:100%;margin-top:12px;background:var(--card);border:var(--border-w) solid var(--border);color:var(--text);border-radius:var(--radius);padding:12px;font-size:13px;cursor:pointer;font-family:inherit;">Show more results</button></div>' : '');
+}
+
+function appendSearchResults(items, hasMore) {
+  const results = document.getElementById('search-results');
+  if (!results) return;
+  const startIdx = (window._searchResultsCache || []).length - items.length;
+  const div = document.createElement('div');
+  div.innerHTML = buildSearchResultRows(items, startIdx)
+    + (hasMore !== false && items.length > 0 ? '<div><button id="search-more-btn" onclick="loadMoreSearchResults()" style="width:100%;margin-top:12px;background:var(--card);border:var(--border-w) solid var(--border);color:var(--text);border-radius:var(--radius);padding:12px;font-size:13px;cursor:pointer;font-family:inherit;">Show more results</button></div>' : '');
+  results.appendChild(div);
 }
 
 async function confirmAddRecord(idx) {
