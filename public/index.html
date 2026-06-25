@@ -73,10 +73,10 @@
   /* ── PHASE A: SOCIAL / FRIENDS ── */
 
   /* Extra bottom padding so content clears the tab bar */
-  .collection { flex: 1; overflow-y: auto; padding: 0 12px 130px; }
+  .collection { flex: 1; overflow-y: auto; padding: 0 12px 80px; }
 
   /* Friends view container */
-  .friends-view { flex: 1; overflow-y: auto; padding-bottom: 130px; }
+  .friends-view { flex: 1; overflow-y: auto; padding-bottom: 20px; }
 
   /* User row (following/followers/search results) */
   .user-row {
@@ -209,13 +209,12 @@
   .stat-num { font-size: 18px; font-weight: 700; color: var(--accent); font-family: var(--title-font); }
   .stat-lbl { font-size: 9px; color: var(--subtext); margin-top: 1px; }
 
-  /* Bottom tab bar */
+  /* Bottom tab bar — lives inside #app flex column, no fixed positioning needed */
   .tab-bar {
-    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-    width: 100%; max-width: 430px; background: var(--bg);
-    border-top: var(--border-w) solid var(--border);
-    display: flex; padding: 8px 0 24px; z-index: 200;
-    transition: background 0.3s;
+    display: flex; flex-shrink: 0; width: 100%;
+    background: var(--bg); border-top: var(--border-w) solid var(--border);
+    padding: 8px 0 env(safe-area-inset-bottom, 20px);
+    z-index: 200; transition: background 0.3s;
   }
   .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px 0; }
   .tab-item .ti { font-size: 22px; color: var(--subtext); transition: color 0.15s; }
@@ -223,9 +222,9 @@
   .tab-item span { font-size: 9px; color: var(--subtext); transition: color 0.15s; }
   .tab-item.active span { color: var(--accent); }
 
-  /* Random picker button (floating) — sits above the tab bar on mobile */
+  /* Random picker button (floating) */
   .fab {
-    position: fixed; bottom: 100px; right: calc(50% - 215px + 16px);
+    position: fixed; bottom: 20px; right: calc(50% - 215px + 16px);
     width: 52px; height: 52px; border-radius: 50%;
     background: var(--accent); border: none; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
@@ -557,6 +556,19 @@
   <div class="app-content" id="app-content">
     <!-- Content rendered by JS -->
   </div>
+  <!-- Tab bar lives inside #app so it's part of the flex column — no floating/fixed issues -->
+  <div class="tab-bar" id="tab-bar" style="display:none;">
+    <div class="tab-item active" id="tab-collection" onclick="switchTab('collection')">
+      <div class="ti">💿</div>
+      <span>Collection</span>
+    </div>
+    <div class="tab-item" id="tab-friends" onclick="switchTab('friends')">
+      <div class="ti" style="position:relative;display:inline-block;">
+        👥<span id="friends-badge" style="display:none;" class="tab-badge">0</span>
+      </div>
+      <span>Friends</span>
+    </div>
+  </div>
 </div>
 
 <!-- Record Detail -->
@@ -675,20 +687,6 @@
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage();}"></textarea>
     <button class="chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()">&#10148;</button>
-  </div>
-</div>
-
-<!-- Tab bar (shown after login) -->
-<div class="tab-bar" id="tab-bar" style="display:none;">
-  <div class="tab-item active" id="tab-collection" onclick="switchTab('collection')">
-    <div class="ti">💿</div>
-    <span>Collection</span>
-  </div>
-  <div class="tab-item" id="tab-friends" onclick="switchTab('friends')">
-    <div class="ti" style="position:relative;display:inline-block;">
-      👥<span id="friends-badge" style="display:none;" class="tab-badge">0</span>
-    </div>
-    <span>Friends</span>
   </div>
 </div>
 
