@@ -503,14 +503,17 @@ function dedupeReleaseResults(raw, limit) {
 // ── Search Discogs database for a release to manually add ──
 app.get('/api/search-release', requireAuth, async (req, res) => {
   const q = (req.query.q || '').trim();
+  const page = Math.max(1, parseInt(req.query.page) || 1);
   if (!q) return res.status(400).json({ error: 'Missing search query' });
   if (!DISCOGS_KEY || !DISCOGS_SECRET) return res.status(500).json({ error: 'Search not configured' });
   try {
-    // Fetch a larger raw pool than we'll show, since most of it collapses into duplicates
-    const url = `https://api.discogs.com/database/search?q=${encodeURIComponent(q)}&type=release&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}&per_page=100`;
+    // Fetch a larger raw pool per page so deduplication still leaves plenty of results.
+    // We use Discogs pagination: page 1 = results 1-100, page 2 = 101-200 etc.
+    const url = `https://api.discogs.com/database/search?q=${encodeURIComponent(q)}&type=release&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}&per_page=100&page=${page}`;
     const data = await discogsPublicGet(url);
+    const totalPages = data.pagination?.pages || 1;
     const results = dedupeReleaseResults(data.results || [], 15);
-    res.json({ results });
+    res.json({ results, hasMore: page < totalPages });
   } catch(e) {
     console.error('Search error:', e.message);
     res.status(500).json({ error: 'Search failed' });
