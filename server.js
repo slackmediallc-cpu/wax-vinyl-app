@@ -647,6 +647,242 @@ app.get('/api/lyrics', requireAuth, async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────
+// ADMIN DASHBOARD
+// Protected by ADMIN_PASSWORD env var + a signed JWT cookie.
+// Route: /admin  (never linked from the app UI)
+// ─────────────────────────────────────────────────────────────
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
+const ADMIN_COOKIE   = 'wax_admin';
+
+function adminAuth(req, res, next) {
+  try {
+    const token = req.cookies?.[ADMIN_COOKIE] || '';
+    jwt.verify(token, JWT_SECRET + '_admin');
+    next();
+  } catch {
+    res.redirect('/admin/login');
+  }
+}
+
+// Minimal cookie parser (no extra dep needed)
+app.use((req, res, next) => {
+  req.cookies = {};
+  const raw = req.headers.cookie || '';
+  raw.split(';').forEach(pair => {
+    const [k, ...v] = pair.trim().split('=');
+    if (k) req.cookies[k.trim()] = decodeURIComponent(v.join('='));
+  });
+  next();
+});
+
+function adminHtml(title, body) {
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wax Admin — ${title}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d0d0d;color:#e0d5c5;min-height:100vh}
+  a{color:#c4922a;text-decoration:none} a:hover{text-decoration:underline}
+  .topbar{background:#1a1610;border-bottom:1px solid #2a2218;padding:14px 28px;display:flex;align-items:center;gap:20px}
+  .topbar h1{font-size:18px;font-weight:700;color:#c4922a}
+  .topbar nav{display:flex;gap:16px;font-size:13px}
+  .content{padding:28px;max-width:1100px;margin:0 auto}
+  .card{background:#1a1610;border:1px solid #2a2218;border-radius:10px;padding:20px;margin-bottom:20px}
+  .stat-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+  .stat{background:#1a1610;border:1px solid #2a2218;border-radius:10px;padding:16px 22px;min-width:130px}
+  .stat-num{font-size:28px;font-weight:700;color:#c4922a}
+  .stat-lbl{font-size:12px;color:#8a7a6a;margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;color:#8a7a6a;font-weight:600;padding:8px 12px;border-bottom:1px solid #2a2218;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  td{padding:10px 12px;border-bottom:1px solid #1e1a14;vertical-align:middle}
+  tr:hover td{background:#1e1a14}
+  .badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:#2a1f0a;color:#c4922a;border:1px solid #c4922a}
+  .badge.grey{background:#1e1e1e;color:#8a7a6a;border-color:#3a3a3a}
+  .pill{display:inline-block;background:#c4922a;color:#0d0d0d;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+  .logout{margin-left:auto;font-size:13px;color:#8a7a6a}
+  .art{width:38px;height:38px;border-radius:5px;object-fit:cover;background:#2a2218;vertical-align:middle}
+  .section-title{font-size:13px;font-weight:700;color:#8a7a6a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px}
+  input,button{font-family:inherit}
+</style></head><body>
+<div class="topbar">
+  <h1>🎵 Wax Admin</h1>
+  <nav><a href="/admin">Dashboard</a><a href="/admin/users">Users</a></nav>
+  <span class="logout"><a href="/admin/logout">Log out</a></span>
+</div>
+<div class="content">${body}</div>
+</body></html>`;
+}
+
+// ── Login page ──
+app.get('/admin/login', (req, res) => {
+  const err = req.query.err ? '<p style="color:#c0504a;font-size:13px;margin-top:10px;">Incorrect password.</p>' : '';
+  res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<title>Wax Admin Login</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;background:#0d0d0d;color:#e0d5c5;display:flex;align-items:center;justify-content:center;min-height:100vh}
+.box{background:#1a1610;border:1px solid #2a2218;border-radius:12px;padding:36px;width:320px}
+h2{font-size:20px;font-weight:700;color:#c4922a;margin-bottom:24px}
+input{width:100%;background:#0d0d0d;border:1px solid #2a2218;border-radius:7px;padding:11px 14px;color:#e0d5c5;font-size:14px;margin-bottom:14px}
+button{width:100%;background:#c4922a;border:none;border-radius:7px;padding:12px;color:#0d0d0d;font-weight:700;font-size:14px;cursor:pointer}</style></head>
+<body><div class="box"><h2>Wax Admin</h2>
+<form method="POST" action="/admin/login">
+<input type="password" name="password" placeholder="Admin password" autofocus>
+<button type="submit">Log in</button>${err}
+</form></div></body></html>`);
+});
+
+app.use(express.urlencoded({ extended: false }));
+
+app.post('/admin/login', (req, res) => {
+  if (!ADMIN_PASSWORD || req.body.password !== ADMIN_PASSWORD) {
+    return res.redirect('/admin/login?err=1');
+  }
+  const token = jwt.sign({ admin: true }, JWT_SECRET + '_admin', { expiresIn: '12h' });
+  res.setHeader('Set-Cookie', `${ADMIN_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=43200; SameSite=Lax`);
+  res.redirect('/admin');
+});
+
+app.get('/admin/logout', (req, res) => {
+  res.setHeader('Set-Cookie', `${ADMIN_COOKIE}=; HttpOnly; Path=/; Max-Age=0`);
+  res.redirect('/admin/login');
+});
+
+// ── Dashboard (stats overview) ──
+app.get('/admin', adminAuth, async (req, res) => {
+  try {
+    const [usersR, recordsR, newUsersR, topAlbumsR] = await Promise.all([
+      pool.query('SELECT COUNT(*) FROM users'),
+      pool.query('SELECT COUNT(*) FROM records'),
+      pool.query("SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '7 days'"),
+      pool.query(`SELECT title, artist, COUNT(*) as owners
+                  FROM records GROUP BY title, artist
+                  ORDER BY owners DESC LIMIT 10`),
+    ]);
+
+    const totalUsers   = usersR.rows[0].count;
+    const totalRecords = recordsR.rows[0].count;
+    const newUsers     = newUsersR.rows[0].count;
+    const topAlbums    = topAlbumsR.rows;
+
+    const topAlbumRows = topAlbums.map((r, i) =>
+      `<tr><td style="color:#8a7a6a;width:28px">${i+1}</td>
+       <td><strong>${escAdmin(r.title)}</strong><br><span style="color:#8a7a6a;font-size:12px">${escAdmin(r.artist)}</span></td>
+       <td><span class="pill">${r.owners} ${r.owners == 1 ? 'owner' : 'owners'}</span></td></tr>`
+    ).join('');
+
+    res.send(adminHtml('Dashboard', `
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:20px">Dashboard</h2>
+      <div class="stat-row">
+        <div class="stat"><div class="stat-num">${totalUsers}</div><div class="stat-lbl">Total users</div></div>
+        <div class="stat"><div class="stat-num">${newUsers}</div><div class="stat-lbl">New this week</div></div>
+        <div class="stat"><div class="stat-num">${totalRecords}</div><div class="stat-lbl">Total records</div></div>
+      </div>
+      <div class="card">
+        <div class="section-title">Most collected albums on Wax</div>
+        <table><thead><tr><th>#</th><th>Album</th><th>Collectors</th></tr></thead>
+        <tbody>${topAlbumRows || '<tr><td colspan="3" style="color:#8a7a6a;padding:20px 12px">Not enough data yet</td></tr>'}</tbody></table>
+      </div>
+      <p style="text-align:right;margin-top:8px"><a href="/admin/users">View all users →</a></p>
+    `));
+  } catch(e) {
+    res.status(500).send('DB error: ' + e.message);
+  }
+});
+
+// ── User list ──
+app.get('/admin/users', adminAuth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT u.id, u.email, u.display_name, u.discogs_username,
+             u.created_at,
+             COUNT(r.id) AS record_count
+      FROM users u
+      LEFT JOIN records r ON r.user_id = u.id
+      GROUP BY u.id
+      ORDER BY u.created_at DESC`);
+
+    const rows = result.rows.map(u => {
+      const joined = new Date(u.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+      const discogs = u.discogs_username
+        ? `<span class="badge">Discogs: ${escAdmin(u.discogs_username)}</span>`
+        : `<span class="badge grey">No Discogs</span>`;
+      return `<tr>
+        <td><a href="/admin/users/${u.id}">${escAdmin(u.display_name || u.email)}</a>
+            <br><span style="font-size:11px;color:#8a7a6a">${escAdmin(u.email)}</span></td>
+        <td>${discogs}</td>
+        <td style="text-align:center"><strong>${u.record_count}</strong></td>
+        <td style="color:#8a7a6a">${joined}</td>
+        <td><a href="/admin/users/${u.id}" style="font-size:12px">View →</a></td>
+      </tr>`;
+    }).join('');
+
+    res.send(adminHtml('Users', `
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:20px">Users <span style="color:#8a7a6a;font-size:16px;font-weight:400">(${result.rows.length})</span></h2>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table>
+          <thead><tr><th>User</th><th>Discogs</th><th style="text-align:center">Records</th><th>Joined</th><th></th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="5" style="color:#8a7a6a;padding:20px 12px">No users yet</td></tr>'}</tbody>
+        </table>
+      </div>
+    `));
+  } catch(e) {
+    res.status(500).send('DB error: ' + e.message);
+  }
+});
+
+// ── Per-user collection view ──
+app.get('/admin/users/:id', adminAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const [userR, recordsR] = await Promise.all([
+      pool.query('SELECT id, email, display_name, discogs_username, created_at FROM users WHERE id = $1', [userId]),
+      pool.query('SELECT * FROM records WHERE user_id = $1 ORDER BY artist ASC, title ASC', [userId]),
+    ]);
+    const user = userR.rows[0];
+    if (!user) return res.status(404).send('User not found');
+
+    const joined = new Date(user.created_at).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+    const records = recordsR.rows;
+
+    const recordRows = records.map(r => {
+      const img = r.cover_image || r.thumb || '';
+      return `<tr>
+        <td>${img ? `<img class="art" src="${escAdmin(img)}" alt="">` : '<div class="art"></div>'}</td>
+        <td><strong>${escAdmin(r.title)}</strong></td>
+        <td style="color:#8a7a6a">${escAdmin(r.artist || '')}</td>
+        <td style="color:#8a7a6a">${r.year || '—'}</td>
+        <td style="color:#8a7a6a">${escAdmin(r.genre || '')}</td>
+        <td><span class="badge ${r.source === 'manual' ? '' : 'grey'}">${r.source === 'manual' ? 'Manual' : 'Discogs'}</span></td>
+      </tr>`;
+    }).join('');
+
+    res.send(adminHtml(user.display_name || user.email, `
+      <p style="margin-bottom:20px"><a href="/admin/users">← All users</a></p>
+      <div class="card" style="margin-bottom:20px">
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+          <div><div class="section-title" style="margin-bottom:6px">Name</div>${escAdmin(user.display_name || '—')}</div>
+          <div><div class="section-title" style="margin-bottom:6px">Email</div>${escAdmin(user.email)}</div>
+          <div><div class="section-title" style="margin-bottom:6px">Discogs</div>${user.discogs_username ? escAdmin(user.discogs_username) : '—'}</div>
+          <div><div class="section-title" style="margin-bottom:6px">Joined</div>${joined}</div>
+          <div><div class="section-title" style="margin-bottom:6px">Records</div><strong>${records.length}</strong></div>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table>
+          <thead><tr><th></th><th>Title</th><th>Artist</th><th>Year</th><th>Genre</th><th>Source</th></tr></thead>
+          <tbody>${recordRows || '<tr><td colspan="6" style="color:#8a7a6a;padding:20px 12px">No records yet</td></tr>'}</tbody>
+        </table>
+      </div>
+    `));
+  } catch(e) {
+    res.status(500).send('DB error: ' + e.message);
+  }
+});
+
+function escAdmin(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 app.listen(PORT, () => console.log(`Wax running on port ${PORT}`));
