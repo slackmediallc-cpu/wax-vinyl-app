@@ -126,7 +126,12 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
 app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, email, display_name, avatar_url, discogs_username, discogs_access_token FROM users WHERE id = $1', [req.userId]);
+    const result = await pool.query(
+      `SELECT id, email, display_name, avatar_url, discogs_username, discogs_access_token,
+              username, is_public, bio, setup_description, setup_photo, storage_description, storage_photo
+       FROM users WHERE id = $1`,
+      [req.userId]
+    );
     const user = result.rows[0];
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({
@@ -136,6 +141,13 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
       avatarUrl: user.avatar_url,
       discogsUsername: user.discogs_username,
       discogsLinked: !!user.discogs_access_token,
+      username: user.username,
+      isPublic: user.is_public,
+      bio: user.bio,
+      setupDescription: user.setup_description,
+      setupPhoto: user.setup_photo,
+      storageDescription: user.storage_description,
+      storagePhoto: user.storage_photo,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -701,6 +713,347 @@ app.get('/api/lyrics', requireAuth, async (req, res) => {
   } catch(e) {
     console.error('Genius error:', e.message);
     res.json({ lyrics: null });
+  }
+});
+
+// ═════════════════════════════════════════════════════════════
+// PHASE A — SOCIAL / FRIENDS
+// ═════════════════════════════════════════════════════════════
+
+// ── Username setup ────────────────────────────────────────────
+app.post('/api/auth/username', requireAuth, async (req, res) => {
+  let { username } = req.body || {};
+  if (!username) return res.status(400).json({ error: 'Username required' });
+  username = username.toLowerCase().trim();
+  if (!/^[a-z0-9._-]{2,30}$/.test(username)) {
+    return res.status(400).json({ error: 'Username must be 2–30 chars: letters, numbers, dots, hyphens, underscores only' });
+  }
+  try {
+    await pool.query('UPDATE users SET username = $1 WHERE id = $2', [username, req.userId]);
+    res.json({ ok: true, username });
+  } catch(e) {
+    if (e.code === '23505') return res.status(409).json({ error: 'Username already taken — try another' });
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Profile text fields (bio, setup, storage descriptions) ────
+app.post('/api/auth/profile', requireAuth, async (req, res) => {
+  const { bio, setupDescription, storageDescription } = req.body || {};
+  try {
+    await pool.query(
+      'UPDATE users SET bio = $1, setup_description = $2, storage_description = $3 WHERE id = $4',
+      [bio || null, setupDescription || null, storageDescription || null, req.userId]
+    );
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Setup photo upload ────────────────────────────────────────
+app.post('/api/auth/setup-photo', requireAuth, async (req, res) => {
+  const { photoUrl } = req.body || {};
+  if (!photoUrl) return res.status(400).json({ error: 'No image provided' });
+  try {
+    await pool.query('UPDATE users SET setup_photo = $1 WHERE id = $2', [photoUrl, req.userId]);
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Storage photo upload ──────────────────────────────────────
+app.post('/api/auth/storage-photo', requireAuth, async (req, res) => {
+  const { photoUrl } = req.body || {};
+  if (!photoUrl) return res.status(400).json({ error: 'No image provided' });
+  try {
+    await pool.query('UPDATE users SET storage_photo = $1 WHERE id = $2', [photoUrl, req.userId]);
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Privacy toggle ────────────────────────────────────────────
+app.post('/api/auth/privacy', requireAuth, async (req, res) => {
+  const { isPublic } = req.body || {};
+  try {
+    await pool.query('UPDATE users SET is_public = $1 WHERE id = $2', [!!isPublic, req.userId]);
+    // Switching to public auto-accepts all pending follow requests
+    if (isPublic) {
+      await pool.query(
+        "UPDATE follows SET status = 'accepted' WHERE following_id = $1 AND status = 'pending'",
+        [req.userId]
+      );
+    }
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── User search — MUST come before /api/users/:username ───────
+app.get('/api/users/search', requireAuth, async (req, res) => {
+  const q = (req.query.q || '').toLowerCase().trim();
+  if (q.length < 2) return res.json({ users: [] });
+  try {
+    const result = await pool.query(`
+      SELECT u.id, u.username, u.display_name, u.avatar_url, u.is_public,
+             COUNT(DISTINCT r.id) AS record_count,
+             f.status AS follow_status
+      FROM users u
+      LEFT JOIN records r ON r.user_id = u.id
+      LEFT JOIN follows f ON f.follower_id = $2 AND f.following_id = u.id
+      WHERE u.username ILIKE $1 AND u.id != $2 AND u.username IS NOT NULL
+      GROUP BY u.id, f.status
+      ORDER BY u.username
+      LIMIT 20
+    `, [q + '%', req.userId]);
+    res.json({ users: result.rows });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Follow list endpoints — MUST come before /api/follow/:userId ──
+app.get('/api/follows/pending', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT u.id, u.username, u.display_name, u.avatar_url, f.created_at
+      FROM follows f
+      JOIN users u ON u.id = f.follower_id
+      WHERE f.following_id = $1 AND f.status = 'pending'
+      ORDER BY f.created_at DESC
+    `, [req.userId]);
+    res.json({ requests: result.rows });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/follows/following', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT u.id, u.username, u.display_name, u.avatar_url, u.is_public,
+             COUNT(DISTINCT r.id) AS record_count, f.status
+      FROM follows f
+      JOIN users u ON u.id = f.following_id
+      LEFT JOIN records r ON r.user_id = u.id
+      WHERE f.follower_id = $1
+      GROUP BY u.id, f.status
+      ORDER BY u.username
+    `, [req.userId]);
+    res.json({ following: result.rows });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/follows/followers', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT u.id, u.username, u.display_name, u.avatar_url,
+             COUNT(DISTINCT r.id) AS record_count, f.status
+      FROM follows f
+      JOIN users u ON u.id = f.follower_id
+      LEFT JOIN records r ON r.user_id = u.id
+      WHERE f.following_id = $1 AND f.status = 'accepted'
+      GROUP BY u.id, f.status
+      ORDER BY u.username
+    `, [req.userId]);
+    res.json({ followers: result.rows });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Follow actions ────────────────────────────────────────────
+app.post('/api/follow/:userId', requireAuth, async (req, res) => {
+  const targetId = parseInt(req.params.userId);
+  if (isNaN(targetId) || targetId === req.userId) {
+    return res.status(400).json({ error: 'Invalid user' });
+  }
+  try {
+    const userResult = await pool.query('SELECT is_public FROM users WHERE id = $1', [targetId]);
+    if (!userResult.rows[0]) return res.status(404).json({ error: 'User not found' });
+    const status = userResult.rows[0].is_public ? 'accepted' : 'pending';
+    await pool.query(
+      `INSERT INTO follows (follower_id, following_id, status) VALUES ($1, $2, $3)
+       ON CONFLICT (follower_id, following_id) DO UPDATE SET status = EXCLUDED.status`,
+      [req.userId, targetId, status]
+    );
+    res.json({ ok: true, status });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/follow/:userId/accept', requireAuth, async (req, res) => {
+  const followerId = parseInt(req.params.userId);
+  try {
+    await pool.query(
+      "UPDATE follows SET status = 'accepted' WHERE follower_id = $1 AND following_id = $2 AND status = 'pending'",
+      [followerId, req.userId]
+    );
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/follow/:userId/decline', requireAuth, async (req, res) => {
+  const followerId = parseInt(req.params.userId);
+  try {
+    await pool.query(
+      'DELETE FROM follows WHERE follower_id = $1 AND following_id = $2',
+      [followerId, req.userId]
+    );
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/follow/:userId', requireAuth, async (req, res) => {
+  const targetId = parseInt(req.params.userId);
+  try {
+    await pool.query(
+      'DELETE FROM follows WHERE follower_id = $1 AND following_id = $2',
+      [req.userId, targetId]
+    );
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── User profile by username ──────────────────────────────────
+app.get('/api/users/:username', requireAuth, async (req, res) => {
+  const username = req.params.username.toLowerCase();
+  try {
+    const result = await pool.query(`
+      SELECT u.id, u.username, u.display_name, u.avatar_url, u.is_public,
+             u.bio, u.setup_description, u.setup_photo, u.storage_description, u.storage_photo,
+             COUNT(DISTINCT r.id) AS record_count,
+             (SELECT COUNT(*) FROM follows WHERE following_id = u.id AND status = 'accepted') AS follower_count,
+             (SELECT COUNT(*) FROM follows WHERE follower_id  = u.id AND status = 'accepted') AS following_count,
+             f.status AS follow_status
+      FROM users u
+      LEFT JOIN records r ON r.user_id = u.id
+      LEFT JOIN follows f ON f.follower_id = $2 AND f.following_id = u.id
+      WHERE LOWER(u.username) = $1
+      GROUP BY u.id, f.status
+    `, [username, req.userId]);
+
+    if (!result.rows[0]) return res.status(404).json({ error: 'User not found' });
+    const u = result.rows[0];
+    const isSelf  = u.id === req.userId;
+    const canView = isSelf || u.is_public || u.follow_status === 'accepted';
+
+    res.json({
+      id:                 u.id,
+      username:           u.username,
+      displayName:        u.display_name,
+      avatarUrl:          u.avatar_url,
+      isPublic:           u.is_public,
+      bio:                u.bio,
+      setupDescription:   canView ? u.setup_description  : null,
+      setupPhoto:         canView ? u.setup_photo         : null,
+      storageDescription: canView ? u.storage_description : null,
+      storagePhoto:       canView ? u.storage_photo       : null,
+      recordCount:        parseInt(u.record_count)   || 0,
+      followerCount:      parseInt(u.follower_count)  || 0,
+      followingCount:     parseInt(u.following_count) || 0,
+      followStatus:       isSelf ? 'self' : (u.follow_status || 'none'),
+      isSelf,
+      canView,
+    });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Friend's collection (permission-checked) ──────────────────
+app.get('/api/users/:username/collection', requireAuth, async (req, res) => {
+  const username = req.params.username.toLowerCase();
+  try {
+    const userResult = await pool.query(
+      'SELECT id, is_public FROM users WHERE LOWER(username) = $1', [username]
+    );
+    if (!userResult.rows[0]) return res.status(404).json({ error: 'User not found' });
+    const target  = userResult.rows[0];
+    const isSelf  = target.id === req.userId;
+
+    if (!isSelf && !target.is_public) {
+      const fResult = await pool.query(
+        "SELECT status FROM follows WHERE follower_id = $1 AND following_id = $2",
+        [req.userId, target.id]
+      );
+      if (!fResult.rows[0] || fResult.rows[0].status !== 'accepted') {
+        return res.status(403).json({ error: 'private_collection' });
+      }
+    }
+
+    const recordsResult = await pool.query(
+      'SELECT * FROM records WHERE user_id = $1 ORDER BY artist ASC, title ASC',
+      [target.id]
+    );
+
+    const releases = recordsResult.rows.map(r => ({
+      id:           r.discogs_release_id || `manual-${r.id}`,
+      manual_db_id: (isSelf && r.source === 'manual') ? r.id : null,
+      basic_information: {
+        id:          r.discogs_release_id || null,
+        title:       r.title,
+        artists:     [{ name: r.artist || 'Unknown Artist' }],
+        year:        r.year,
+        genres:      r.genre  ? [r.genre]           : [],
+        styles:      r.style  ? [r.style]            : [],
+        formats:     r.format ? [{ name: r.format }] : [],
+        labels:      r.label  ? [{ name: r.label }]  : [],
+        cover_image: r.cover_image,
+        thumb:       r.thumb,
+      }
+    }));
+
+    res.json({ releases, total: releases.length });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Record owners / discovery ─────────────────────────────────
+// Returns other Wax users who own this release, sorted by how many
+// records they share with the requesting user — so "most in common"
+// floats to the top. Works for both public and private accounts
+// (username + common count shown either way, collection gated separately).
+app.get('/api/records/:releaseId/owners', requireAuth, async (req, res) => {
+  const releaseId = req.params.releaseId;
+  try {
+    const result = await pool.query(`
+      SELECT u.id, u.username, u.display_name, u.avatar_url, u.is_public,
+             f.status AS follow_status,
+             (
+               SELECT COUNT(*) FROM records r2
+               WHERE r2.user_id = u.id
+               AND r2.discogs_release_id IN (
+                 SELECT discogs_release_id FROM records
+                 WHERE user_id = $2 AND discogs_release_id IS NOT NULL
+               )
+             ) AS common_count
+      FROM records r
+      JOIN users u ON u.id = r.user_id
+      LEFT JOIN follows f ON f.follower_id = $2 AND f.following_id = u.id
+      WHERE r.discogs_release_id = $1
+        AND r.user_id != $2
+        AND u.username IS NOT NULL
+      GROUP BY u.id, f.status
+      ORDER BY common_count DESC, u.username
+    `, [releaseId, req.userId]);
+    res.json({ owners: result.rows, total: result.rows.length });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
