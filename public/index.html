@@ -3646,14 +3646,12 @@ async function sendSettingsPhoneCode() {
   try {
     const data = await apiPost('/api/auth/send-phone-code', { phone });
     _settingsPhoneNormalized = data.phone;
-    if (errEl) errEl.textContent = 'Code sent! Check your texts.';
+    if (errEl) errEl.textContent = 'Code sent — check your texts. May take a moment.';
     const codeSection = document.getElementById('settings-phone-code-section');
     if (codeSection) codeSection.style.display = 'block';
     if (input) input.disabled = true;
   } catch(e) {
-    const msg = e.message || 'Could not send code.';
-    if (errEl) errEl.textContent = msg;
-    alert('SMS error: ' + msg); // surface it clearly
+    if (errEl) errEl.textContent = e.message || 'Could not send code. Try again.';
   }
 }
 
