@@ -2704,7 +2704,9 @@ function showLogin(errorMsg) {
       <div class="setup-sub" id="auth-sub">${authMode === 'login' ? 'Sign in to your Wax account.' : 'Create your Wax account to get started.'}</div>
       ${errorMsg ? `<p id="auth-error" style="font-size:12px;color:#e05050;background:rgba(224,80,80,0.1);border-radius:8px;padding:10px 14px;width:100%;text-align:center;">${errorMsg}</p>` : '<p id="auth-error" style="display:none;"></p>'}
       <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
-        ${authMode === 'signup' ? '<input id="auth-name" type="text" placeholder="Your name" style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:14px;font-size:14px;color:var(--text);font-family:inherit;">' : ''}
+        ${authMode === 'signup' ? `
+        <input id="auth-name" type="text" placeholder="Your name" style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:14px;font-size:14px;color:var(--text);font-family:inherit;">
+        <input id="auth-phone" type="tel" placeholder="Phone number (optional — for account recovery)" style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:14px;font-size:14px;color:var(--text);font-family:inherit;">` : ''}
         <input id="auth-email" type="email" placeholder="Email" style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:14px;font-size:14px;color:var(--text);font-family:inherit;">
         <input id="auth-password" type="password" placeholder="Password" style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:14px;font-size:14px;color:var(--text);font-family:inherit;" onkeydown="if(event.key==='Enter')submitAuth();">
       </div>
@@ -2724,42 +2726,68 @@ function showResetPassword(errorMsg) {
     <div class="setup-screen">
       <div class="setup-disc"><div class="disc-hole-lg"></div></div>
       <div class="setup-title">Reset Password</div>
-      <div class="setup-sub">Enter your email and a new password.</div>
-      ${errorMsg ? `<p id="reset-error" style="font-size:12px;color:#e05050;background:rgba(224,80,80,0.1);border-radius:8px;padding:10px 14px;width:100%;text-align:center;">${errorMsg}</p>` : '<p id="reset-error" style="display:none;"></p>'}
+      <div class="setup-sub">Enter your email and we'll send a code to your verified phone number.</div>
+      ${errorMsg ? `<p style="font-size:12px;color:#e05050;background:rgba(224,80,80,0.1);border-radius:8px;padding:10px 14px;width:100%;text-align:center;">${errorMsg}</p>` : ''}
       <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
         <input id="reset-email" type="email" placeholder="Email" style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:14px;font-size:14px;color:var(--text);font-family:inherit;">
-        <input id="reset-password" type="password" placeholder="New password" style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:14px;font-size:14px;color:var(--text);font-family:inherit;" onkeydown="if(event.key==='Enter')submitPasswordReset();">
       </div>
-      <button class="token-btn" id="reset-submit-btn" onclick="submitPasswordReset()">
-        Reset Password
-      </button>
+      <button class="token-btn" id="reset-submit-btn" onclick="submitResetRequest()">Send Reset Code</button>
       <button onclick="authMode='login';showLogin();" style="background:none;border:none;color:var(--subtext);font-size:13px;cursor:pointer;padding:4px;font-family:inherit;">Back to log in</button>
     </div>
   `;
 }
 
-async function submitPasswordReset() {
-  const email = document.getElementById('reset-email').value.trim();
-  const newPassword = document.getElementById('reset-password').value;
-  if (!email || !newPassword) {
-    const el = document.getElementById('reset-error');
-    el.textContent = 'Please fill in both fields.';
-    el.style.display = 'block';
-    return;
-  }
+function showResetCodeEntry(email, masked) {
+  document.getElementById('app-content').innerHTML = `
+    <div class="setup-screen">
+      <div class="setup-disc"><div class="disc-hole-lg"></div></div>
+      <div class="setup-title">Enter Code</div>
+      <div class="setup-sub">We sent a 6-digit code to the number ending in ${escHtml(masked)}.</div>
+      <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
+        <input id="reset-code" type="number" placeholder="6-digit code" maxlength="6"
+          style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:14px;font-size:20px;color:var(--text);font-family:inherit;text-align:center;letter-spacing:0.2em;">
+        <input id="reset-new-password" type="password" placeholder="New password"
+          style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:14px;font-size:14px;color:var(--text);font-family:inherit;"
+          onkeydown="if(event.key==='Enter')submitResetCode('${escHtml(email)}');">
+      </div>
+      <p id="reset-code-error" style="font-size:12px;color:#e05050;min-height:16px;"></p>
+      <button class="token-btn" id="reset-code-btn" onclick="submitResetCode('${escHtml(email)}')">Set New Password</button>
+      <button onclick="showResetPassword()" style="background:none;border:none;color:var(--subtext);font-size:13px;cursor:pointer;font-family:inherit;">Try a different email</button>
+    </div>
+  `;
+}
+
+async function submitResetRequest() {
+  const email = (document.getElementById('reset-email') || {}).value?.trim();
+  if (!email) { showResetPassword('Please enter your email.'); return; }
   const btn = document.getElementById('reset-submit-btn');
-  btn.disabled = true;
-  btn.textContent = 'Resetting...';
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
   try {
-    const data = await apiPost('/api/auth/reset-password', { email, newPassword });
+    const data = await apiPost('/api/auth/request-reset', { email });
+    if (data.method === 'none') {
+      showResetPassword('No verified phone on file for that account. Contact support to recover your account.');
+    } else {
+      showResetCodeEntry(email, data.masked);
+    }
+  } catch(e) {
+    showResetPassword(e.message || 'Could not send reset code.');
+  }
+}
+
+async function submitResetCode(email) {
+  const code = (document.getElementById('reset-code') || {}).value?.trim();
+  const newPassword = (document.getElementById('reset-new-password') || {}).value;
+  const errEl = document.getElementById('reset-code-error');
+  if (!code || !newPassword) { if (errEl) errEl.textContent = 'Please fill in both fields.'; return; }
+  const btn = document.getElementById('reset-code-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Verifying...'; }
+  try {
+    const data = await apiPost('/api/auth/reset-with-code', { email, code, newPassword });
     setToken(data.token);
     init();
   } catch(e) {
-    const el = document.getElementById('reset-error');
-    el.textContent = e.message || 'Could not reset password.';
-    el.style.display = 'block';
-    btn.disabled = false;
-    btn.textContent = 'Reset Password';
+    if (errEl) errEl.textContent = e.message || 'Invalid or expired code.';
+    if (btn) { btn.disabled = false; btn.textContent = 'Set New Password'; }
   }
 }
 
@@ -2777,12 +2805,11 @@ async function submitAuth() {
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   const nameInput = document.getElementById('auth-name');
+  const phoneInput = document.getElementById('auth-phone');
   const displayName = nameInput ? nameInput.value.trim() : '';
+  const phone = phoneInput ? phoneInput.value.trim() : '';
 
-  if (!email || !password) {
-    showAuthError('Please fill in all fields.');
-    return;
-  }
+  if (!email || !password) { showAuthError('Please fill in all fields.'); return; }
 
   const btn = document.getElementById('auth-submit-btn');
   btn.disabled = true;
@@ -2793,11 +2820,72 @@ async function submitAuth() {
     const body = authMode === 'login' ? { email, password } : { email, password, displayName };
     const data = await apiPost(endpoint, body);
     setToken(data.token);
-    init();
+    // If phone provided on signup, trigger verification before entering the app
+    if (authMode === 'signup' && phone) {
+      showPhoneVerifyOnboarding(phone);
+    } else {
+      init();
+    }
   } catch(e) {
     showAuthError(e.message || 'Something went wrong. Please try again.');
     btn.disabled = false;
     btn.textContent = authMode === 'login' ? 'Log In' : 'Create Account';
+  }
+}
+
+function showPhoneVerifyOnboarding(phone) {
+  document.getElementById('app-content').innerHTML = `
+    <div class="setup-screen">
+      <div class="setup-disc"><div class="disc-hole-lg"></div></div>
+      <div class="setup-title">Verify your number</div>
+      <div class="setup-sub">We'll send a code to ${escHtml(phone)} to confirm it's yours.</div>
+      <button class="token-btn" id="send-onboard-code-btn" onclick="sendOnboardCode('${escHtml(phone)}')">Send Code</button>
+      <button onclick="init()" style="background:none;border:none;color:var(--subtext);font-size:13px;cursor:pointer;font-family:inherit;">Skip for now</button>
+    </div>
+  `;
+}
+
+async function sendOnboardCode(phone) {
+  const btn = document.getElementById('send-onboard-code-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+  try {
+    const data = await apiPost('/api/auth/send-phone-code', { phone });
+    showPhoneCodeEntry(data.phone);
+  } catch(e) {
+    alert(e.message || 'Could not send code. You can add your number later in Settings.');
+    init();
+  }
+}
+
+function showPhoneCodeEntry(normalizedPhone) {
+  document.getElementById('app-content').innerHTML = `
+    <div class="setup-screen">
+      <div class="setup-disc"><div class="disc-hole-lg"></div></div>
+      <div class="setup-title">Enter the code</div>
+      <div class="setup-sub">Sent to ${escHtml(normalizedPhone)}. Valid for 10 minutes.</div>
+      <input id="onboard-code-input" type="number" placeholder="6-digit code" maxlength="6"
+        style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:14px;font-size:24px;color:var(--text);font-family:inherit;text-align:center;letter-spacing:0.3em;"
+        onkeydown="if(event.key==='Enter')verifyOnboardCode('${escHtml(normalizedPhone)}');">
+      <p id="onboard-code-error" style="font-size:12px;color:#e05050;min-height:16px;"></p>
+      <button class="token-btn" id="verify-onboard-btn" onclick="verifyOnboardCode('${escHtml(normalizedPhone)}')">Verify</button>
+      <button onclick="init()" style="background:none;border:none;color:var(--subtext);font-size:13px;cursor:pointer;font-family:inherit;">Skip for now</button>
+    </div>
+  `;
+  setTimeout(function() { const inp = document.getElementById('onboard-code-input'); if (inp) inp.focus(); }, 200);
+}
+
+async function verifyOnboardCode(phone) {
+  const code = (document.getElementById('onboard-code-input') || {}).value?.trim();
+  const errEl = document.getElementById('onboard-code-error');
+  if (!code) { if (errEl) errEl.textContent = 'Enter the 6-digit code.'; return; }
+  const btn = document.getElementById('verify-onboard-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Verifying...'; }
+  try {
+    await apiPost('/api/auth/verify-phone', { phone, code });
+    init(); // verified — enter the app
+  } catch(e) {
+    if (errEl) errEl.textContent = e.message || 'Invalid code. Try again.';
+    if (btn) { btn.disabled = false; btn.textContent = 'Verify'; }
   }
 }
 
@@ -3475,7 +3563,29 @@ function renderProfileSettingsSection() {
           + '<button onclick="saveUsernameFromSettings()" style="background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Save</button>'
           + '</div>')
     + '<div id="settings-username-error" style="font-size:11px;color:#e05050;min-height:16px;margin-top:4px;"></div></div>'
-    // Privacy toggle
+    // Phone number
+    + '<div style="margin-bottom:12px;padding:10px 0;border-top:var(--border-w) solid var(--border);border-bottom:var(--border-w) solid var(--border);">'
+    + '<div style="font-size:11px;color:var(--subtext);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em;">Phone number</div>'
+    + (u.phoneVerified
+        ? '<div style="display:flex;align-items:center;gap:8px;">'
+          + '<div style="flex:1;font-size:14px;color:var(--text);">📱 ' + escHtml(u.phone || '') + ' <span style="font-size:11px;color:#4aaa5a;">✓ Verified</span></div>'
+          + '<button onclick="showChangePhone()" style="font-size:12px;color:var(--subtext);background:none;border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:8px;cursor:pointer;font-family:inherit;">Change</button>'
+          + '</div>'
+        : '<div id="phone-add-section">'
+          + '<p style="font-size:12px;color:var(--subtext);margin-bottom:8px;">Add your number for account recovery via SMS.</p>'
+          + '<div style="display:flex;gap:8px;">'
+          + '<input id="settings-phone-input" type="tel" placeholder="+1 555 000 0000" '
+          + 'style="flex:1;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:14px;color:var(--text);font-family:inherit;">'
+          + '<button onclick="sendSettingsPhoneCode()" style="background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Send Code</button>'
+          + '</div>'
+          + '<div id="settings-phone-code-section" style="display:none;margin-top:10px;">'
+          + '<input id="settings-phone-code" type="number" placeholder="6-digit code" '
+          + 'style="width:100%;background:var(--card);border:var(--border-w) solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:18px;color:var(--text);font-family:inherit;text-align:center;letter-spacing:0.2em;margin-bottom:8px;">'
+          + '<button onclick="verifySettingsPhone()" style="width:100%;background:var(--accent);border:none;color:var(--accent-text);border-radius:var(--radius);padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Verify</button>'
+          + '</div>'
+          + '<div id="settings-phone-error" style="font-size:11px;color:#e05050;min-height:16px;margin-top:4px;"></div>'
+          + '</div>')
+    + '</div>'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:10px 0;border-top:var(--border-w) solid var(--border);border-bottom:var(--border-w) solid var(--border);">'
     + '<div><div style="font-size:13px;color:var(--text);">Public account</div>'
     + '<div style="font-size:11px;color:var(--subtext);margin-top:2px;">Anyone can follow without approval</div></div>'
@@ -3523,6 +3633,44 @@ async function saveUsernameFromSettings() {
   } catch(e) {
     if (errEl) errEl.textContent = e.message || 'Username already taken.';
   }
+}
+
+let _settingsPhoneNormalized = '';
+
+async function sendSettingsPhoneCode() {
+  const input = document.getElementById('settings-phone-input');
+  const errEl = document.getElementById('settings-phone-error');
+  const phone = input ? input.value.trim() : '';
+  if (!phone) { if (errEl) errEl.textContent = 'Enter a phone number.'; return; }
+  if (errEl) errEl.textContent = '';
+  try {
+    const data = await apiPost('/api/auth/send-phone-code', { phone });
+    _settingsPhoneNormalized = data.phone;
+    const codeSection = document.getElementById('settings-phone-code-section');
+    if (codeSection) codeSection.style.display = 'block';
+    if (input) input.disabled = true;
+  } catch(e) {
+    if (errEl) errEl.textContent = e.message || 'Could not send code.';
+  }
+}
+
+async function verifySettingsPhone() {
+  const code = (document.getElementById('settings-phone-code') || {}).value?.trim();
+  const errEl = document.getElementById('settings-phone-error');
+  if (!code) { if (errEl) errEl.textContent = 'Enter the code.'; return; }
+  try {
+    await apiPost('/api/auth/verify-phone', { phone: _settingsPhoneNormalized, code });
+    CURRENT_USER.phone = _settingsPhoneNormalized;
+    CURRENT_USER.phoneVerified = true;
+    renderProfileSettingsSection();
+  } catch(e) {
+    if (errEl) errEl.textContent = e.message || 'Invalid code. Try again.';
+  }
+}
+
+function showChangePhone() {
+  CURRENT_USER.phoneVerified = false;
+  renderProfileSettingsSection();
 }
 
 async function togglePrivacy() {
