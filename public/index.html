@@ -3642,15 +3642,18 @@ async function sendSettingsPhoneCode() {
   const errEl = document.getElementById('settings-phone-error');
   const phone = input ? input.value.trim() : '';
   if (!phone) { if (errEl) errEl.textContent = 'Enter a phone number.'; return; }
-  if (errEl) errEl.textContent = '';
+  if (errEl) errEl.textContent = 'Sending...';
   try {
     const data = await apiPost('/api/auth/send-phone-code', { phone });
     _settingsPhoneNormalized = data.phone;
+    if (errEl) errEl.textContent = 'Code sent! Check your texts.';
     const codeSection = document.getElementById('settings-phone-code-section');
     if (codeSection) codeSection.style.display = 'block';
     if (input) input.disabled = true;
   } catch(e) {
-    if (errEl) errEl.textContent = e.message || 'Could not send code.';
+    const msg = e.message || 'Could not send code.';
+    if (errEl) errEl.textContent = msg;
+    alert('SMS error: ' + msg); // surface it clearly
   }
 }
 
