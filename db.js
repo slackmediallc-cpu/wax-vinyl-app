@@ -89,6 +89,30 @@ async function initSchema() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_follows_follower  ON follows(follower_id);`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_follows_following ON follows(following_id);`);
 
+  // ── Phone verification columns ───────────────────────────────────────────
+  const phoneCols = [
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN NOT NULL DEFAULT FALSE`,
+  ];
+  for (const sql of phoneCols) {
+    await pool.query(sql);
+  }
+
+  // ── Verification codes (SMS codes for phone verify + password reset) ──────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS verification_codes (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      phone TEXT NOT NULL,
+      code TEXT NOT NULL,
+      purpose TEXT NOT NULL,
+      expires_at TIMESTAMP NOT NULL,
+      used BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_vcodes_phone ON verification_codes(phone);`);
+
   console.log('Database schema ready.');
 }
 module.exports = { pool, initSchema };
