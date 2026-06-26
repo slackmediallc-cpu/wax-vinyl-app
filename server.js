@@ -102,25 +102,154 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Temporary no-email password reset (confirms account by email, sets new password directly).
-// Note: this is intentionally permissive for early testing — anyone who knows the email
-// can reset the password. Replace with a real emailed reset-link flow before public launch.
-app.post('/api/auth/reset-password', async (req, res) => {
-  if (!pool) return res.status(500).json({ error: 'Database not configured' });
-  const { email, newPassword } = req.body || {};
-  if (!email || !newPassword) return res.status(400).json({ error: 'Email and new password required' });
+// ── Twilio SMS helper ────────────────────────────────────────────────────────
+const TWILIO_SID   = (process.env.TWILIO_ACCOUNT_SID  || '').trim();
+const TWILIO_TOKEN = (process.env.TWILIO_AUTH_TOKEN    || '').trim();
+const TWILIO_FROM  = (process.env.TWILIO_PHONE_NUMBER  || '').trim();
+
+function sendSms(to, body) {
+  return new Promise((resolve, reject) => {
+    if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_FROM) {
+      return reject(new Error('Twilio not configured'));
+    }
+    const postBody = new URLSearchParams({ To: to, From: TWILIO_FROM, Body: body }).toString();
+    const auth = Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString('base64');
+    const req = https.request(
+      `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
+      { method: 'POST', headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(postBody) } },
+      (res) => {
+        let data = '';
+        res.on('data', c => { data += c; });
+        res.on('end', () => {
+          const parsed = JSON.parse(data);
+          if (parsed.error_code) reject(new Error(parsed.message || 'Twilio error'));
+          else resolve(parsed);
+        });
+      }
+    );
+    req.on('error', reject);
+    req.write(postBody);
+    req.end();
+  });
+}
+
+function generateCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function normalizePhone(raw) {
+  // Strip everything except digits and leading +
+  const digits = raw.replace(/[^\d]/g, '');
+  // Assume US if 10 digits with no country code
+  return digits.length === 10 ? '+1' + digits : '+' + digits;
+}
+
+// ── Send phone verification code ─────────────────────────────────────────────
+app.post('/api/auth/send-phone-code', requireAuth, async (req, res) => {
+  const { phone } = req.body || {};
+  if (!phone) return res.status(400).json({ error: 'Phone number required' });
+  const normalized = normalizePhone(phone);
+  const code = generateCode();
+  const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+  try {
+    // Expire any previous unused codes for this phone
+    await pool.query(
+      `UPDATE verification_codes SET used = TRUE WHERE phone = $1 AND purpose = 'phone_verify' AND used = FALSE`,
+      [normalized]
+    );
+    await pool.query(
+      `INSERT INTO verification_codes (user_id, phone, code, purpose, expires_at) VALUES ($1, $2, $3, 'phone_verify', $4)`,
+      [req.userId, normalized, code, expires]
+    );
+    await sendSms(normalized, `Your Wax verification code is ${code}. Expires in 10 minutes.`);
+    res.json({ ok: true, phone: normalized });
+  } catch(e) {
+    console.error('Send phone code error:', e.message);
+    res.status(500).json({ error: 'Could not send verification code. Check the phone number and try again.' });
+  }
+});
+
+// ── Verify phone code ────────────────────────────────────────────────────────
+app.post('/api/auth/verify-phone', requireAuth, async (req, res) => {
+  const { phone, code } = req.body || {};
+  if (!phone || !code) return res.status(400).json({ error: 'Phone and code required' });
+  const normalized = normalizePhone(phone);
+  try {
+    const result = await pool.query(
+      `SELECT id FROM verification_codes
+       WHERE phone = $1 AND code = $2 AND purpose = 'phone_verify'
+         AND used = FALSE AND expires_at > NOW()
+       ORDER BY created_at DESC LIMIT 1`,
+      [normalized, String(code).trim()]
+    );
+    if (!result.rows[0]) return res.status(400).json({ error: 'Invalid or expired code. Try again.' });
+    await pool.query(`UPDATE verification_codes SET used = TRUE WHERE id = $1`, [result.rows[0].id]);
+    await pool.query(`UPDATE users SET phone = $1, phone_verified = TRUE WHERE id = $2`, [normalized, req.userId]);
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Request password reset (SMS-based) ───────────────────────────────────────
+app.post('/api/auth/request-reset', async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'Email required' });
+  try {
+    const result = await pool.query(
+      'SELECT id, phone, phone_verified FROM users WHERE email = $1',
+      [email.toLowerCase().trim()]
+    );
+    const user = result.rows[0];
+    // Always return the same response to prevent email enumeration
+    if (!user || !user.phone_verified) {
+      return res.json({ ok: true, method: 'none' });
+    }
+    const code = generateCode();
+    const expires = new Date(Date.now() + 10 * 60 * 1000);
+    await pool.query(
+      `UPDATE verification_codes SET used = TRUE WHERE user_id = $1 AND purpose = 'password_reset' AND used = FALSE`,
+      [user.id]
+    );
+    await pool.query(
+      `INSERT INTO verification_codes (user_id, phone, code, purpose, expires_at) VALUES ($1, $2, $3, 'password_reset', $4)`,
+      [user.id, user.phone, code, expires]
+    );
+    await sendSms(user.phone, `Your Wax password reset code is ${code}. Expires in 10 minutes.`);
+    // Return masked phone so the UI can show "sent to •••-•••-1234"
+    const masked = user.phone.slice(-4);
+    res.json({ ok: true, method: 'sms', masked });
+  } catch(e) {
+    console.error('Request reset error:', e.message);
+    res.status(500).json({ error: 'Could not send reset code.' });
+  }
+});
+
+// ── Reset password with SMS code ─────────────────────────────────────────────
+app.post('/api/auth/reset-with-code', async (req, res) => {
+  const { email, code, newPassword } = req.body || {};
+  if (!email || !code || !newPassword) return res.status(400).json({ error: 'All fields required' });
   if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
   try {
-    const result = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase().trim()]);
-    const user = result.rows[0];
-    if (!user) return res.status(404).json({ error: 'No account found with that email' });
+    const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase().trim()]);
+    const user = userResult.rows[0];
+    if (!user) return res.status(400).json({ error: 'Invalid code.' });
+    const codeResult = await pool.query(
+      `SELECT id FROM verification_codes
+       WHERE user_id = $1 AND code = $2 AND purpose = 'password_reset'
+         AND used = FALSE AND expires_at > NOW()
+       ORDER BY created_at DESC LIMIT 1`,
+      [user.id, String(code).trim()]
+    );
+    if (!codeResult.rows[0]) return res.status(400).json({ error: 'Invalid or expired code.' });
+    await pool.query(`UPDATE verification_codes SET used = TRUE WHERE id = $1`, [codeResult.rows[0].id]);
     const hash = await bcrypt.hash(newPassword, 10);
     await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, user.id]);
     const token = signToken(user.id);
     res.json({ ok: true, token });
-  } catch (e) {
-    console.error('Password reset error:', e.message);
-    res.status(500).json({ error: 'Could not reset password' });
+  } catch(e) {
+    console.error('Reset with code error:', e.message);
+    res.status(500).json({ error: 'Could not reset password.' });
   }
 });
 
@@ -128,7 +257,8 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT id, email, display_name, avatar_url, discogs_username, discogs_access_token,
-              username, is_public, bio, setup_description, setup_photo, storage_description, storage_photo
+              username, is_public, bio, setup_description, setup_photo, storage_description, storage_photo,
+              phone, phone_verified
        FROM users WHERE id = $1`,
       [req.userId]
     );
@@ -148,6 +278,8 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
       setupPhoto: user.setup_photo,
       storageDescription: user.storage_description,
       storagePhoto: user.storage_photo,
+      phone: user.phone,
+      phoneVerified: user.phone_verified,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
